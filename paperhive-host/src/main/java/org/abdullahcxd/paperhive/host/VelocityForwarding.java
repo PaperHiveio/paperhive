@@ -66,7 +66,7 @@ final class VelocityForwarding {
         Files.writeString(file, YAML.writeValueAsString(root));
     }
 
-    private static ObjectNode object(ObjectNode parent, String key) {
+    private static ObjectNode object(@NotNull ObjectNode parent, String key) {
         return parent.get(key) instanceof ObjectNode o ? o : parent.putObject(key);
     }
 

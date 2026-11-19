@@ -8,6 +8,7 @@ import org.abdullahcxd.paperhive.api.event.HiveEvent;
 import org.abdullahcxd.paperhive.api.event.Subscribe;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -38,7 +39,7 @@ final class HiveEventBus implements EventBus {
     /** The {@link Subscribe} methods of a class and its superclasses, checked. */
     private static final ClassValue<List<Method>> SUBSCRIBERS = new ClassValue<>() {
         @Override
-        protected List<Method> computeValue(@NotNull Class<?> type) {
+        protected @NotNull @Unmodifiable List<Method> computeValue(@NotNull Class<?> type) {
             List<Method> methods = new ArrayList<>();
             for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
                 for (Method m : c.getDeclaredMethods()) {
@@ -111,7 +112,7 @@ final class HiveEventBus implements EventBus {
         return event;
     }
 
-    private Handler[] handlersFor(Class<?> eventType) {
+    private Handler @NotNull [] handlersFor(Class<?> eventType) {
         return handlers.stream()
                 .filter(h -> h.type().isAssignableFrom(eventType))
                 .sorted(Comparator.comparing(h -> h.subscribe().priority())) // stable: registration order within a priority

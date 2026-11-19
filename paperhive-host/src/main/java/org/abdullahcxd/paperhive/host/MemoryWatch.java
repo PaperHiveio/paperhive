@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host;
 
 import com.sun.management.HotSpotDiagnosticMXBean;
+import org.jetbrains.annotations.NotNull;
 
 import javax.management.Notification;
 import javax.management.NotificationEmitter;
@@ -31,7 +32,7 @@ final class MemoryWatch {
      * @param running  the servers running, for the warning
      * @return removes the watch
      */
-    static Runnable install(double fraction, Supplier<List<String>> running, Consumer<String> warn) {
+    static @NotNull Runnable install(double fraction, Supplier<List<String>> running, Consumer<String> warn) {
         for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
             long max = pool.getUsage().getMax();
             if (pool.getType() == MemoryType.HEAP && pool.isCollectionUsageThresholdSupported() && max > 0) {

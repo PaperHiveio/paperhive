@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
@@ -39,6 +40,11 @@ public final class ServerManager {
     // the settings each instance was made with; a `set` since then makes a new instance at the next start
     private final Map<String, HiveConfig.Server> builtFrom = new LinkedHashMap<>();
     private volatile @Nullable ServerInstance attached;
+    /**
+     * -- SETTER --
+     * Asked before every start through here (not a crash restart); false keeps the server stopped.
+     */
+    @Setter
     private volatile Predicate<String> startGuard = name -> true;
 
     /**
@@ -110,11 +116,6 @@ public final class ServerManager {
         servers.remove(name);
         instances.remove(name);
         builtFrom.remove(name);
-    }
-
-    /** Asked before every start through here (not a crash restart); false keeps the server stopped. */
-    public void setStartGuard(Predicate<String> startGuard) {
-        this.startGuard = startGuard;
     }
 
     /** @return false if it couldn't start (logged) or the start guard said no */

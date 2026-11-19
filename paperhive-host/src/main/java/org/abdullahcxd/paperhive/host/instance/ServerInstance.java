@@ -363,7 +363,6 @@ public final class ServerInstance {
         return jul;
     }
 
-    /** The instance a thread belongs to (by thread group, then context loader), or null for host threads. */
     /** The instance a thread belongs to (its thread group, else its context loader), or null for host threads. */
     public static @Nullable ServerInstance ofThread(Thread thread) {
         for (ThreadGroup g = thread.getThreadGroup(); g != null; g = g.getParent()) {
