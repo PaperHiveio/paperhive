@@ -120,6 +120,26 @@ Two kinds of commands, which are easy to mix up:
   server's `paperhive.yml` entry turns both halves off for that server; `plugin enable|disable <name>` turns a plugin
   off everywhere.
 
+## Hive utilities (M12)
+- **`Namespaced`** (`namespace:value`, Paper's key rules): names channels, services and shared data. Plugins get
+  `key(value)` in their namespace (their descriptor name, made valid), the same on both halves.
+- **Typed layers over strings**: only text crosses class loaders, so `HiveChannel<T>` and `HiveService<Q, R>` (API
+  classes, no host code) encode with a `MessageCodec` on each end. The host implements the string primitives:
+  `publish`, `send` (one server, or the host side with `null`), `request`/`respond` and `getData()`.
+- **Ownership**: a listener belongs to the server (or Hive plugin) whose loader defined its class; for a class
+  shared by everyone (the API's wrappers, JDK lambdas) the nearest caller on the stack that belongs to one decides.
+  That's what targeted sends and requests match on, and what's dropped when a server stops.
+- **Requests**: the target's newest responder answers on the event thread; its `CompletionStage` result is passed
+  back through the event thread too, so the requester's callbacks never run on the responding server's main thread.
+  No responder: `NoResponderException`; none in time: `TimeoutException`.
+- **Shared data** (`HiveDataStore`): one `ConcurrentHashMap` in the host, atomic per key (`compute`), watchers owned
+  and told on the event thread; in memory for the host's lifetime.
+- **Server-half side**: `HiveBukkitPlugin` adds `channel`/`service` in its namespace, `onMessage`/`handle` (on the
+  main thread), `relay` (messages as Bukkit `HiveMessageEvent`s) and `mainThread()`; the bridge fires
+  `HiveServerStateEvent` in every server and logs its traffic with the host in colour (MiniMessage).
+- **Console**: the host prints the Paperhive logo (a honeycomb) with its version before anything starts; JLine drops
+  the colours on a plain terminal.
+
 ## Bukkit bridge (M9)
 Goal: a Hive plugin works with the server it runs in like a Bukkit plugin does (server, events, commands, scheduler,
 data folder), while staying one plugin for the whole hive, with no `plugin.yml` to write.

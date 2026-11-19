@@ -124,6 +124,11 @@
           "icon": "blocks"
         },
         {
+          "title": "Namespaced keys",
+          "path": "/plugins/namespaced/",
+          "icon": "key-round"
+        },
+        {
           "title": "Events",
           "path": "/plugins/events/",
           "icon": "zap"
@@ -132,6 +137,16 @@
           "title": "Messaging",
           "path": "/plugins/messaging/",
           "icon": "message-square"
+        },
+        {
+          "title": "Request and reply",
+          "path": "/plugins/requests/",
+          "icon": "arrow-left-right"
+        },
+        {
+          "title": "Shared data",
+          "path": "/plugins/shared-data/",
+          "icon": "database"
         },
         {
           "title": "Hive commands",

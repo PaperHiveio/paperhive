@@ -66,8 +66,15 @@ class PaperInstanceIT {
                 assertTrue(instance.stop(Duration.ofSeconds(90)), "round " + i + " had to be forced");
                 assertEquals(ServerInstance.State.STOPPED, instance.getState());
 
-                gc();
+                // a stopped loader can take a few GC cycles to go (finalizers, cleaners); count once it has, as the
+                // final assertCollected allows, so a slow collection isn't mistaken for growth
+                for (int g = 0; g < 50 && loaders.get(i).get() != null; g++) gc();
                 classes[i] = ManagementFactory.getClassLoadingMXBean().getLoadedClassCount();
+                // and its classes are unloaded a cycle or so after the loader is cleared
+                for (int g = 0; g < 10 && i > 1 && classes[i] - classes[1] >= 2_000; g++) {
+                    gc();
+                    classes[i] = ManagementFactory.getClassLoadingMXBean().getLoadedClassCount();
+                }
                 threads[i] = ManagementFactory.getThreadMXBean().getThreadCount();
                 System.out.printf("[PaperInstanceIT] round %d: boot %.1fs, stop %.1fs, loaded classes %d, threads %d, loaders alive %d%n",
                         i + 1, (booted - started) / 1e9, (System.nanoTime() - booted) / 1e9,

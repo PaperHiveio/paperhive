@@ -7,6 +7,9 @@ import org.abdullahcxd.paperhive.api.HiveServer;
 import org.abdullahcxd.paperhive.api.HiveServerState;
 import org.abdullahcxd.paperhive.api.HiveServerStats;
 import org.abdullahcxd.paperhive.api.Registration;
+import org.abdullahcxd.paperhive.api.data.HiveData;
+import org.abdullahcxd.paperhive.api.message.HiveResponder;
+import org.abdullahcxd.paperhive.api.message.NoResponderException;
 import org.abdullahcxd.paperhive.api.event.EventBus;
 import org.abdullahcxd.paperhive.api.event.server.ServerCrashEvent;
 import org.abdullahcxd.paperhive.api.event.server.ServerStartEvent;
@@ -20,8 +23,14 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.host.plugin.HivePluginManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +61,9 @@ public final class HostHive implements Hive, BridgeHooks {
     private final Map<String, Bridge> bridges = new ConcurrentHashMap<>();
     private final HiveEventBus bus = new HiveEventBus(HostHive::ownerOf);
     private final Map<String, List<Owned<HiveMessageListener>>> channels = new ConcurrentHashMap<>();
+    private final Map<String, List<Owned<HiveResponder>>> responders = new ConcurrentHashMap<>();
+    private final HiveDataStore data = new HiveDataStore(HostHive::ownerOf, this::deliver);
+    private static final StackWalker WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
     /** One thread, so events and messages arrive in order; made now, on the host's thread (not lazily from a server's). */
     private final ThreadPoolExecutor events = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), r -> {
         Thread t = new Thread(r, "paperhive-events");
@@ -76,7 +88,7 @@ public final class HostHive implements Hive, BridgeHooks {
     // ---- Hive ----
 
     @Override
-    public @NotNull List<HiveServer> getServers() {
+    public @NotNull @Unmodifiable List<HiveServer> getServers() {
         return servers.names().stream().map(this::handle).toList();
     }
 
@@ -114,10 +126,86 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     @Override
+    public void send(@Nullable HiveServer target, @NotNull String channel, @NotNull String message) {
+        HiveServer from = getCurrentServer();
+        for (Owned<HiveMessageListener> sub : channels.getOrDefault(channel, List.of())) {
+            if (ownedBy(sub.owner(), target)) deliver(() -> sub.value().onMessage(from, channel, message));
+        }
+    }
+
+    @Override
     public @NotNull Registration subscribe(@NotNull String channel, @NotNull HiveMessageListener listener) {
-        Owned<HiveMessageListener> owned = new Owned<>(ownerOf(listener), listener);
+        return subscribeAs(ownerOf(listener), channel, listener);
+    }
+
+    /** {@link #subscribe} for a known owner (a server, a Hive plugin's loader, or null for the host). */
+    Registration subscribeAs(@Nullable Object owner, String channel, HiveMessageListener listener) {
+        Owned<HiveMessageListener> owned = new Owned<>(owner, listener);
         channels.computeIfAbsent(channel, c -> new CopyOnWriteArrayList<>()).add(owned);
         return () -> channels.getOrDefault(channel, List.of()).remove(owned);
+    }
+
+    @Override
+    public @NotNull CompletableFuture<String> request(@Nullable HiveServer target, @NotNull String channel, @NotNull String message, @NotNull Duration timeout) {
+        HiveServer from = getCurrentServer();
+        CompletableFuture<String> answer = new CompletableFuture<>();
+        deliver(() -> {
+            Owned<HiveResponder> responder = responderFor(channel, target);
+            if (responder == null) {
+                answer.completeExceptionally(new NoResponderException("Nobody answers " + channel + " on " + (target == null ? "the host" : target.getName())));
+                return;
+            }
+            CompletionStage<String> stage;
+            try {
+                stage = Objects.requireNonNull(responder.value().respond(from, channel, message), "a responder returned null");
+            } catch (Throwable e) {
+                answer.completeExceptionally(e);
+                return;
+            }
+            stage.whenComplete((reply, error) -> {
+                if (error != null) answer.completeExceptionally(error instanceof CompletionException c && c.getCause() != null ? c.getCause() : error);
+                else answer.complete(reply);
+            });
+        });
+        // the caller's callbacks run on the event thread, never on the responding server's main thread
+        CompletableFuture<String> result = new CompletableFuture<>();
+        answer.orTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS).whenComplete((reply, error) -> deliver(() -> {
+            if (error != null) result.completeExceptionally(error);
+            else result.complete(reply);
+        }));
+        return result;
+    }
+
+    @Override
+    public @NotNull Registration respond(@NotNull String channel, @NotNull HiveResponder responder) {
+        return respondAs(ownerOf(responder), channel, responder);
+    }
+
+    /** {@link #respond} for a known owner. */
+    Registration respondAs(@Nullable Object owner, String channel, HiveResponder responder) {
+        Owned<HiveResponder> owned = new Owned<>(owner, responder);
+        responders.computeIfAbsent(channel, c -> new CopyOnWriteArrayList<>()).add(owned);
+        return () -> responders.getOrDefault(channel, List.of()).remove(owned);
+    }
+
+    /** The newest responder on {@code channel} owned by {@code target} (null: the host's). */
+    private @Nullable Owned<HiveResponder> responderFor(String channel, @Nullable HiveServer target) {
+        List<Owned<HiveResponder>> list = responders.getOrDefault(channel, List.of());
+        for (int i = list.size() - 1; i >= 0; i--) {
+            Owned<HiveResponder> r = list.get(i);
+            if (ownedBy(r.owner(), target)) return r;
+        }
+        return null;
+    }
+
+    /** Whether something with {@code owner} belongs to {@code target}: that server, or the host side when it's null. */
+    private static boolean ownedBy(@Nullable Object owner, @Nullable HiveServer target) {
+        return target == null ? !(owner instanceof ServerInstance) : owner instanceof ServerInstance i && i.getName().equals(target.getName());
+    }
+
+    @Override
+    public @NotNull HiveData getData() {
+        return data;
     }
 
     // ---- BridgeHooks ----
@@ -172,11 +260,26 @@ public final class HostHive implements Hive, BridgeHooks {
     void release(Object owner) {
         bus.unregisterOwnedBy(owner);
         channels.values().forEach(subs -> subs.removeIf(o -> o.owner() == owner));
+        responders.values().forEach(list -> list.removeIf(o -> o.owner() == owner));
+        data.release(owner);
     }
 
-    /** The server whose loader made {@code listener}'s class, else its Hive plugin's loader, else null (the host). */
-    private static @Nullable Object ownerOf(Object listener) {
-        ClassLoader loader = listener.getClass().getClassLoader();
+    /**
+     * The server whose loader made {@code listener}'s class, else its Hive plugin's loader. A class shared by everyone
+     * (Paperhive's API, e.g. the wrappers {@code HiveChannel} makes, or the JDK's) says nothing, so then the nearest
+     * caller on the stack that belongs to a server or a Hive plugin decides; null means the host.
+     */
+    static @Nullable Object ownerOf(@NotNull Object listener) {
+        Object owner = ownerOfLoader(listener.getClass().getClassLoader());
+        if (owner != null) return owner;
+        return WALKER.walk(frames -> frames
+                .map(f -> ownerOfLoader(f.getDeclaringClass().getClassLoader()))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null));
+    }
+
+    private static @Nullable Object ownerOfLoader(@Nullable ClassLoader loader) {
         ServerInstance instance = InstanceHooks.instanceOf(loader);
         if (instance != null) return instance;
         for (ClassLoader l = loader; l != null; l = l.getParent()) {
@@ -216,7 +319,7 @@ public final class HostHive implements Hive, BridgeHooks {
             this.name = name;
         }
 
-        private ServerInstance instance() {
+        private @NotNull ServerInstance instance() {
             ServerInstance instance = servers.instance(name);
             if (instance == null) throw new IllegalStateException("The server " + name + " was deleted");
             return instance;

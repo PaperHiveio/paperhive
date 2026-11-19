@@ -99,6 +99,7 @@ public abstract class CreateHivePlugin extends DefaultTask {
                 import org.abdullahcxd.paperhive.api.Paperhive;
                 import org.abdullahcxd.paperhive.api.event.Subscribe;
                 import org.abdullahcxd.paperhive.api.event.server.ServerStartedEvent;
+                import org.abdullahcxd.paperhive.api.message.MessageCodec;
                 import org.abdullahcxd.paperhive.plugin.HiveContext;
                 import org.abdullahcxd.paperhive.plugin.PaperhivePlugin;
                 import org.abdullahcxd.paperhive.plugin.context.PluginContext;
@@ -110,8 +111,9 @@ public abstract class CreateHivePlugin extends DefaultTask {
                     @Override
                     public void onEnable(@NotNull HiveContext<PluginContext> context) {
                         Paperhive.getHive().getEventBus().register(this);
-                        Paperhive.getHive().subscribe("%3$s", (from, channel, message) ->
-                                getLogger().info("{} says: {}", from == null ? "the host" : from.getName(), message));
+                        // key("joins") is "<plugin name>:joins", the same channel the server half publishes on
+                        Paperhive.getHive().channel(key("joins"), MessageCodec.STRING).subscribe(message ->
+                                getLogger().info("{} says: {}", message.fromHost() ? "the host" : message.from().getName(), message.payload()));
                     }
 
                     @Subscribe
@@ -131,6 +133,8 @@ public abstract class CreateHivePlugin extends DefaultTask {
         return """
                 package %1$s;
 
+                import org.abdullahcxd.paperhive.api.message.HiveChannel;
+                import org.abdullahcxd.paperhive.api.message.MessageCodec;
                 import org.abdullahcxd.paperhive.bridge.HiveBukkitPlugin;
                 import org.bukkit.event.EventHandler;
                 import org.bukkit.event.Listener;
@@ -140,15 +144,18 @@ public abstract class CreateHivePlugin extends DefaultTask {
                 /** The server half: loaded in each server, with Bukkit and the hive at hand. */
                 public final class %2$sServerPlugin extends HiveBukkitPlugin implements Listener {
 
+                    private HiveChannel<String> joins;
+
                     @Override
                     public void onEnable() {
+                        joins = channel("joins", MessageCodec.STRING); // "<plugin name>:joins"
                         registerListener(this);
                     }
 
                     @EventHandler
                     public void onJoin(@NotNull PlayerJoinEvent event) {
-                        // the host half hears this on its "%3$s" channel
-                        getHive().publish("%3$s", event.getPlayer().getName() + " joined " + getHiveServer().getName());
+                        // the host half hears this
+                        joins.publish(event.getPlayer().getName() + " joined " + getHiveServer().getName());
                     }
 
                 }

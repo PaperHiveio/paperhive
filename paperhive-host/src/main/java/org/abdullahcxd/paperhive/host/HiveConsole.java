@@ -10,6 +10,9 @@ import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
+import org.jline.utils.AttributedString;
+import org.jline.utils.AttributedStringBuilder;
+import org.jline.utils.AttributedStyle;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.ByteArrayOutputStream;
@@ -69,6 +72,39 @@ final class HiveConsole {
         System.setOut(above);
         System.setErr(above);
         return self[0];
+    }
+
+    /**
+     * The Paperhive logo, a honeycomb, with the version; in colour where the terminal has it (JLine drops the colours
+     * for a plain one, e.g. a service's log).
+     */
+    void banner(String version) {
+        AttributedStyle comb = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
+        AttributedStyle bold = AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW);
+        AttributedStyle name = AttributedStyle.BOLD.foreground(AttributedStyle.WHITE);
+        AttributedStyle dim = AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT + AttributedStyle.BLACK);
+        AttributedStyle link = AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN);
+        String[] cells = {
+                "      __    __",
+                "   __/  \\__/  \\__",
+                "  /  \\__/  \\__/  \\",
+                "  \\__/  \\__/  \\__/",
+                "     \\__/  \\__/",
+        };
+        AttributedString[] text = {
+                null,
+                new AttributedStringBuilder().style(name).append("Paperhive").style(dim).append("  v" + version).toAttributedString(),
+                new AttributedStringBuilder().style(AttributedStyle.DEFAULT).append("One JVM, many Paper servers").toAttributedString(),
+                new AttributedStringBuilder().style(link).append("https://paperhive.abdullahcxd.org").toAttributedString(),
+                null,
+        };
+        StringBuilder out = new StringBuilder("\n");
+        for (int i = 0; i < cells.length; i++) {
+            AttributedStringBuilder line = new AttributedStringBuilder().style(i % 2 == 0 ? comb : bold).append(cells[i]);
+            if (text[i] != null) line.append(" ".repeat(Math.max(1, 24 - cells[i].length()))).append(text[i]);
+            out.append(line.toAttributedString().toAnsi(terminal)).append('\n');
+        }
+        System.out.print(out);
     }
 
     /** Reads commands in the background for the rest of the JVM's life (or until input ends). */

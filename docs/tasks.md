@@ -98,7 +98,8 @@ Legend: `[ ]` todo, `[x]` done. Each milestone has an exit criterion; don't star
 - [x] Netty native transport: forced NIO (`io.netty.transport.noNative=true`, set by `ServerInstance` unless already set; Paper's Netty 4.2.7 checks it for epoll and kqueue). Native would extract and load another copy of the library per instance loader on every restart, for no real gain at this scale
 - [x] Verify static state is truly separate: each instance has its own `Bukkit` class and server object with its own port and motd; restarting one leaves the other's server object in place (`PaperInstanceIT.twoInstancesAreJoinableAndRestartIndependently`)
 - [x] Stop and start one while the other runs: the other stays `RUNNING` and keeps accepting logins; the stopped one's port closes, it comes back, and its old loader is collected (same test; logins via the test's `MinecraftClient`)
-- [x] Native transport on Linux exercised: the `paper-it` workflow's Linux "native" variant runs the real-Paper tests with `-Dio.netty.transport.noNative=false`. Epoll works (boots, two joinable instances, file isolation, and `PaperInstanceIT`'s 10 rounds all ended with every loader collected), but in `HivePluginLeakIT` a stopped server's loader sometimes stayed alive for a few rounds and one was still reachable at the end: Netty's native library holds on to its loader until it's unloaded, later and less reliably than NIO. So NIO stays the default (forced unless set) and the native variant is informational. macOS (kqueue) not run
+- [x] Native transport on Linux exercised: the `paper-it` workflow's Linux "native" variant runs the real-Paper tests with `-Dio.netty.transport.noNative=false`, and epoll works (boots, two joinable instances, file isolation, `PaperInstanceIT`'s 10 rounds with every loader collected). NIO stays the default (one native library per instance loader, no gain at this scale). macOS (kqueue) not run
+- [ ] `HivePluginLeakIT` on Linux CI: a stopped server's loader sometimes stays reachable (at most one at a time, freed when the next round replaces it, so the final check can fail), with NIO and with epoll alike; never seen on Windows or locally. The failing run uploads a heap dump (`paper-it-reports-*` artifact): find what holds the last loader
 
 **Exit:** both are joinable at once; restarting one doesn't affect the other.
 
@@ -184,6 +185,20 @@ Bukkit bridge (Hive plugins use their server like Bukkit plugins; design in `arc
 - [x] Per-server JVM metrics: `status` shows live threads and the classes the server's loader defined (Paper and its libraries; plugins' loaders aren't counted)
 
 (Verified: a fresh download through the new jar URL; with real Paper, two servers loading one shared folder kept separate data folders, `status` showed threads/classes, `hive list --tsv` over the socket gave the plugin's format; `ServerSyncTest` covers registering, port changes, configured servers and the host going away.)
+
+---
+
+## M12: Hive utilities
+- [x] `Namespaced` keys (`namespace:value`); `key()` on both plugin halves; `publish`/`subscribe` take them
+- [x] Typed channels (`HiveChannel<T>`, `MessageCodec<T>`) and sending to one server (`send`)
+- [x] Request and reply (`HiveService<Q, R>`, `request`/`respond`): timeouts, no-responder errors, replies on the event thread
+- [x] Shared data (`HiveData`): get/set/remove, compare-and-set, counters, watchers
+- [x] Server-half helpers (`channel`, `service`, `onMessage`, `handle`, `relay`, `mainThread`) and Bukkit events (`HiveServerStateEvent`, `HiveMessageEvent`)
+- [x] Bridge console messages in colour (MiniMessage): connecting, loading and enabling each server half, commands, other servers' states, disconnecting
+- [x] The Paperhive logo (ASCII honeycomb) with the version when the host starts
+- [x] Docs: namespaced keys, messaging, request and reply, shared data, server-half utilities; the example plugin and `createHivePlugin`'s starter use them
+
+(Verified: `NamespacedTest`, `HostHiveTest` (targeted sends, requests incl. timeout/no responder/failure, typed channels and services, shared data); the real-Paper tests with the updated example plugin.)
 
 ---
 

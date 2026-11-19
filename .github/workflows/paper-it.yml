@@ -1,8 +1,7 @@
 # The real-Paper tests (PaperInstanceIT, HivePluginLeakIT): boot, restart and stop real Paper servers in one JVM,
 # checking isolation and that nothing leaks across 10 restarts. Slow (~6 min), so not on every pull request.
 # Runs on Linux and Windows; the Linux "native" variant lets Paper use Netty's epoll transport instead of the NIO
-# Paperhive picks by default. It's informational: with epoll a stopped server's loader is sometimes freed late (the
-# leak checks can fail), which is why NIO is the default (docs/tasks.md, M6).
+# Paperhive picks by default; it's informational (NIO is the default, see docs/tasks.md M6).
 # By running this, the EULA flag below accepts the Minecraft EULA for these throwaway test servers.
 name: paper-it
 

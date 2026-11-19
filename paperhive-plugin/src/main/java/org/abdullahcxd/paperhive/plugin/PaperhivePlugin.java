@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.plugin;
 
 import lombok.Getter;
+import org.abdullahcxd.paperhive.api.Namespaced;
 import org.abdullahcxd.paperhive.plugin.context.PluginContext;
 import org.abdullahcxd.paperhive.plugin.context.ServerContext;
 import org.abdullahcxd.paperhive.plugin.logger.PluginLogger;
@@ -36,6 +37,14 @@ public abstract class PaperhivePlugin {
 
     /** A server it's enabled for is up ({@code RUNNING}). Runs on a Paperhive thread. */
     public void onServerStart(HiveContext<ServerContext> context) {}
+
+    /**
+     * A key in this plugin's namespace: {@code key("joins")} is {@code <plugin name>:joins}, the same key its server
+     * half's {@code key("joins")} gives, so both ends name one channel, service or shared value.
+     */
+    public final Namespaced key(String value) {
+        return Namespaced.forPlugin(pluginDescriptor.getName(), value);
+    }
 
     /** Prefixes every message with {@code [<name>] }. */
     public Logger getLogger() {

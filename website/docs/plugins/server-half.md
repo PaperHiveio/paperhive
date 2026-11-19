@@ -123,6 +123,69 @@ getHive().subscribe("announce", (from, channel, message) ->
         runTask(() -> getServer().broadcast(Component.text(message))));
 ```
 
+## Hive utilities
+
+Shortcuts for talking to the rest of the hive, built for server halves: everything that needs Bukkit runs on the main
+thread, and everything is cleaned up when the server stops.
+
+| Method | |
+|---|---|
+| `key("name")` | A [namespaced key](namespaced.md) in your plugin's namespace. |
+| `channel("name", codec)` | A typed [channel](messaging.md) in your namespace. |
+| `service("name", requestCodec, replyCodec)` | A typed [request and reply](requests.md) service in your namespace. |
+| `onMessage(channel, message -> ...)` | Every message on a channel, handled on the **main thread**. |
+| `handle(service, request -> reply)` | Answer a service's requests to this server on the **main thread**. |
+| `relay(key)` | Turn a channel's messages into Bukkit `HiveMessageEvent`s in this server. |
+| `mainThread()` | An `Executor` for this server's main thread: `future.thenAcceptAsync(..., mainThread())`. |
+| `getHive().getData()` | [Shared data](shared-data.md) for the whole hive. |
+
+```java
+@Override
+public void onEnable() {
+    HiveChannel<UUID> joins = channel("joins", MessageCodec.UUID_CODEC);
+    onMessage(joins, m -> getServer().broadcast(Component.text(m.payload() + " joined " + m.from().getName())));
+
+    HiveService<String, Integer> players = service("players", MessageCodec.STRING, MessageCodec.INTEGER);
+    handle(players, request -> getServer().getOnlinePlayers().size());
+
+    registerListener(this);
+}
+```
+
+## Bukkit events for the hive
+
+The bridge fires these in every server, on the main thread, so plain `@EventHandler` listeners work. Normal Paper
+plugins can listen too.
+
+| Event | When |
+|---|---|
+| `HiveServerStateEvent` | Any server of the hive changes state. `getServer()`, `getFrom()`, `getTo()`, `isThisServer()`. |
+| `HiveMessageEvent` | A message arrives on a channel this server [relays](messaging.md#messages-as-bukkit-events). `getChannel()`, `getFrom()`, `getMessage()`, `decode(codec)`, `is(key)`. |
+
+```java
+@EventHandler
+public void onHiveServer(HiveServerStateEvent event) {
+    if (event.getTo() == HiveServerState.RUNNING && !event.isThisServer()) {
+        getServer().broadcast(Component.text(event.getServer().getName() + " is up"));
+    }
+}
+```
+
+They're in `org.abdullahcxd.paperhive.bridge.event`.
+
+## What the bridge logs
+
+The bridge reports what passes between it and the host in each server's console, coloured:
+
+```text
+[Paperhive] Hive | Connected to the host as lobby (port 25565, 3 server(s) in the hive)
+[Paperhive] Hive | The host sent 2 server half(s) to load
+[Paperhive] Hive | > Loading ExamplePlugin v1.0.0 from example.jar
+[Paperhive] Hive | + ExamplePlugin enabled (12.4 ms)
+[Paperhive] Hive | Enabled 2 of 2 server half(s) in 31.0 ms
+[Paperhive] Hive | survival is now RUNNING
+```
+
 ## What a server half doesn't have
 
 Because it isn't a `JavaPlugin`, some Bukkit-plugin features aren't there:

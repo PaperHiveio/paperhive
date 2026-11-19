@@ -49,6 +49,9 @@ public final class PaperhiveMain {
             System.exit(1);
             return;
         }
+        // the version is in the jar's manifest; running from classes (an IDE, `run`) has none
+        String version = PaperhiveMain.class.getPackage().getImplementationVersion();
+        console.banner(version == null ? "dev" : version);
         Logger log = Log.LOG;
         Path configFile = Path.of(HiveConfig.FILE_NAME);
         HiveConfig config;

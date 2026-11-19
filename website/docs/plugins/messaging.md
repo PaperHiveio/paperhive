@@ -1,55 +1,96 @@
 ---
 title: "Messaging"
-description: "Send messages between the host half and every server with publish and subscribe."
+description: "Typed channels between the host and every server: publish to all, or send to one server."
 ---
 
 # Messaging
 
-Messages are how the parts of a Hive plugin talk to each other: the host half and the server half in every server.
-Anyone can **publish** a string on a **channel**, and every **subscriber** of that channel receives it, on the host
-and in every server.
+Messages are how the parts of a Hive plugin talk: the host half and the server half in every server. A **channel**
+is named by a [namespaced key](namespaced.md) and carries one type of value.
 
 ```java
-// anywhere: the host half, a server half, even a normal Paper plugin
-Paperhive.getHive().publish("myplugin:announce", "Restarting in 5 minutes");
+HiveChannel<UUID> joins = channel("joins", MessageCodec.UUID_CODEC);   // server half; host half: hive.channel(key("joins"), ...)
 
-// anywhere else
-Registration subscription = Paperhive.getHive().subscribe("myplugin:announce",
-        (from, channel, message) -> System.out.println(message));
+joins.subscribe(message -> getLogger().info("{} joined {}", message.payload(), message.from()));
+joins.publish(player.getUniqueId());                    // every subscriber: the host's and every server's
+joins.send(getHive().getServer("lobby"), uuid);         // only the lobby's subscribers
+joins.send(null, uuid);                                 // only the host's (Hive plugins' host halves)
 ```
-
-## The listener
-
-```java
-@FunctionalInterface
-public interface HiveMessageListener {
-    void onMessage(@Nullable HiveServer from, @NotNull String channel, @NotNull String message);
-}
-```
-
-- `from` is the server that published it, or `null` when the host published it.
-- Messages are delivered **in order**, on a **Paperhive thread**. In a server half, hop onto the main thread with
-  `runTask` before using Bukkit.
-- `subscribe` returns a `Registration`; `unregister()` stops it.
 
 ## Channels
 
-Channels are plain strings. Prefix yours with your plugin's name (`myplugin:announce`) so they don't collide with
-other plugins'.
+Get a channel with `hive.channel(key, codec)` (in a server half, `channel("name", codec)` uses your plugin's
+namespace). It's a small value object: make it once, in `onEnable`, and keep it in a field.
 
-## Sending data
+| Method | |
+|---|---|
+| `publish(value)` | To every subscriber, on the host and in every server. |
+| `send(server, value)` | To the subscribers in one server; `null` sends to the host's. |
+| `subscribe(message -> ...)` | Receive every message; returns a `Registration`. |
 
-Messages are strings, so they cross every class loader safely. For structured data, encode it, for example as JSON
-with the Gson that ships with Paper (server half) or a format of your own:
+A received `HiveMessage<T>` has:
+
+| Method | |
+|---|---|
+| `payload()` | The value, decoded. |
+| `from()` | The server that sent it, or `null` when the host did (`fromHost()`). |
+| `channel()` | The channel's key. |
+
+## Codecs: any type, safely
+
+Only text travels between the host and servers, because each server has its own copy of your classes. A
+`MessageCodec<T>` turns your type into text and back on each end.
+
+| Built in | Type |
+|---|---|
+| `MessageCodec.STRING` | `String` |
+| `MessageCodec.INTEGER`, `LONG`, `DOUBLE`, `BOOLEAN` | numbers and booleans |
+| `MessageCodec.UUID_CODEC` | `UUID` (players) |
+| `MessageCodec.enumOf(GameMode.class)` | any enum |
+
+For your own types, give two functions, for example JSON with the Gson that Paper ships (server half):
 
 ```java
-getHive().publish("myplugin:join", player.getName() + "|" + getHiveServer().getName());
+record Invite(UUID from, UUID to, String party) {}
 
-getHive().subscribe("myplugin:join", (from, channel, message) -> {
-    String[] parts = message.split("\\|", 2);
-    // parts[0] = player, parts[1] = server
+Gson gson = new Gson();
+MessageCodec<Invite> invites = MessageCodec.of(gson::toJson, json -> gson.fromJson(json, Invite.class));
+HiveChannel<Invite> channel = channel("invites", invites);
+```
+
+`codec.map(...)` adapts an existing codec: `MessageCodec.STRING.map(PartyName::new, PartyName::value)`.
+
+A message that doesn't decode (another plugin version sending something else) is logged and skipped; the next one
+still arrives.
+
+## Threads
+
+Listeners run on a **Paperhive thread**, in the order messages were sent. In a server half, Bukkit calls need the
+server's main thread, so use the helpers:
+
+```java
+onMessage(joins, message -> {
+    // runs on this server's main thread: Bukkit is safe here
+    Player player = getServer().getPlayer(message.payload());
 });
 ```
+
+## Messages as Bukkit events
+
+`relay(key)` turns every message on a channel into a Bukkit `HiveMessageEvent` in that server, so any
+`@EventHandler` can react, even in normal Paper plugins:
+
+```java
+// server half onEnable
+relay(key("announce"));
+
+@EventHandler
+public void onHiveMessage(HiveMessageEvent event) {
+    if (event.is(key("announce"))) getServer().broadcast(Component.text(event.getMessage()));
+}
+```
+
+`event.decode(codec)` decodes the text with any codec.
 
 ## A complete example: network-wide announcements
 
@@ -67,25 +108,41 @@ final class AnnounceCommand extends HiveCommand {
             sendUsage(sender);
             return;
         }
-        Paperhive.getHive().publish("myplugin:announce", String.join(" ", args));
+        Paperhive.getHive().publish(key("announce"), String.join(" ", args));
         sender.sendMessage("Announced.");
     }
 }
 ```
 
-**Server half**: show it in game.
+**Server half**: relay it, and show it in game.
 
 ```java
 @Override
 public void onEnable() {
-    getHive().subscribe("myplugin:announce", (from, channel, message) ->
-            runTask(() -> getServer().broadcast(Component.text("[Network] " + message))));
+    relay(key("announce"));
+    registerListener(this);
+}
+
+@EventHandler
+public void onAnnounce(HiveMessageEvent event) {
+    if (event.is(key("announce"))) getServer().broadcast(Component.text("[Network] " + event.getMessage()));
 }
 ```
 
 Type `announce The event starts now!` at the `hive>` prompt, and every server's players see it.
 
+## Plain strings
+
+The underlying API still works with raw strings: `hive.publish("myplugin:announce", text)`,
+`hive.subscribe(channel, (from, channel, message) -> ...)` and `hive.send(server, channel, text)`. Channels are just a
+typed layer over it.
+
 ## Cleanup
 
 Subscriptions made inside a server are removed when that server stops, and a Hive plugin's when it's disabled.
 Subscribe again in `onEnable`.
+
+## Next
+
+Need an answer back? Use [request and reply](requests.md). Need state every server can read? Use
+[shared data](shared-data.md).

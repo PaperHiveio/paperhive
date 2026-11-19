@@ -70,7 +70,7 @@ class HivePluginLeakIT {
             plugins.loadPlugins(tmp.resolve("plugins"));
             plugins.enableAll(CommandRegistry.withBuiltins(servers, name -> null));
             List<String> fromHalves = new CopyOnWriteArrayList<>();
-            hive.subscribe("example", (from, channel, message) -> fromHalves.add(message));
+            hive.subscribe("exampleplugin:events", (from, channel, message) -> fromHalves.add(message));
 
             HiveServer handle = hive.getServer("leak");
             List<WeakReference<ClassLoader>> loaders = new ArrayList<>();

@@ -6,6 +6,7 @@ import org.abdullahcxd.paperhive.api.event.Priority;
 import org.abdullahcxd.paperhive.api.event.Subscribe;
 import org.abdullahcxd.paperhive.api.event.server.ServerCrashEvent;
 import org.abdullahcxd.paperhive.api.event.server.ServerStartEvent;
+import org.abdullahcxd.paperhive.api.message.MessageCodec;
 import org.abdullahcxd.paperhive.plugin.HiveContext;
 import org.abdullahcxd.paperhive.plugin.PaperhivePlugin;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
@@ -24,9 +25,10 @@ public final class ExampleHivePlugin extends PaperhivePlugin {
   public void onEnable(@NotNull HiveContext<PluginContext> context) {
     // a Hive command: typed at the host's hive> prompt or sent with `java -jar paperhive.jar hive greet <who>`
     context.getContext().getCommands().register(new GreetCommand());
-    // what the server halves say
-    Paperhive.getHive().subscribe("example", (from, channel, message) ->
-        getLogger().info("Message from {}: {}", from == null ? "the host" : from.getName(), message));
+    context.getContext().getCommands().register(new AnnounceCommand());
+    // what the server halves say, on the same key they use ("exampleplugin:events")
+    Paperhive.getHive().channel(key("events"), MessageCodec.STRING).subscribe(message ->
+        getLogger().info("Message from {}: {}", message.fromHost() ? "the host" : message.from().getName(), message.payload()));
     // Hive events: any object with @Subscribe methods
     Paperhive.getHive().getEventBus().register(this);
   }
@@ -53,6 +55,25 @@ public final class ExampleHivePlugin extends PaperhivePlugin {
   @Override
   public void onDisable() {
     getLogger().info("Bye");
+  }
+
+  /** {@code announce <text>}: every server's players see it (the server halves relay it into a Bukkit event). */
+  private final class AnnounceCommand extends HiveCommand {
+
+    AnnounceCommand() {
+      super("announce", "<text>", "broadcast a message on every server");
+    }
+
+    @Override
+    public void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
+      if (args.isEmpty()) {
+        sendUsage(sender);
+        return;
+      }
+      Paperhive.getHive().publish(key("announce"), String.join(" ", args));
+      sender.sendMessage("Announced");
+    }
+
   }
 
   private static final class GreetCommand extends HiveCommand {

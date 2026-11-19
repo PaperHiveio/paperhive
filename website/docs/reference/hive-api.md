@@ -37,6 +37,42 @@ Every server of this Paperhive host.
 Listeners and subscriptions made by code inside a server are removed when that server stops, and a Hive plugin's when
 it's disabled.
 
+### Messaging, requests and data
+
+| Method | |
+|---|---|
+| `<T> HiveChannel<T> channel(Namespaced key, MessageCodec<T> codec)` | A typed [channel](../plugins/messaging.md). |
+| `<Q, R> HiveService<Q, R> service(Namespaced key, MessageCodec<Q> request, MessageCodec<R> reply)` | A typed [request/reply service](../plugins/requests.md). |
+| `HiveData getData()` | [Shared data](../plugins/shared-data.md) for the whole hive. |
+| `void send(HiveServer target, String channel, String message)` | Like `publish`, but only to `target`'s subscribers (`null`: the host's). |
+| `CompletableFuture<String> request(HiveServer target, String channel, String message, Duration timeout)` | Ask `target` (`null`: the host); its responder answers. Fails with `NoResponderException` or `TimeoutException`. |
+| `Registration respond(String channel, HiveResponder responder)` | Answer requests on `channel` sent to the calling server (or, from the host, to the host). |
+
+`publish`, `subscribe`, `send`, `request` and `respond` also take a `Namespaced` channel.
+
+## Namespaced
+
+`namespace:value` keys; see [Namespaced keys](../plugins/namespaced.md). `of`, `parse`, `forPlugin`, `paperhive`,
+`with`, `namespace()`, `value()`, `asString()`.
+
+## Messaging types
+
+Package `org.abdullahcxd.paperhive.api.message`.
+
+| Type | |
+|---|---|
+| `HiveChannel<T>` | `key()`, `codec()`, `publish(T)`, `send(HiveServer, T)`, `subscribe(Consumer<HiveMessage<T>>)`. |
+| `HiveService<Q, R>` | `key()`, `request(HiveServer, Q)` (and with a `Duration`), `handle(Function)`, `handleAsync(Function)`; `DEFAULT_TIMEOUT` is 5 s. |
+| `HiveMessage<T>` | A received message: `from()` (`null`: the host), `channel()`, `payload()`, `fromHost()`. |
+| `MessageCodec<T>` | `encode`, `decode`, `map`; `STRING`, `INTEGER`, `LONG`, `DOUBLE`, `BOOLEAN`, `UUID_CODEC`, `enumOf(Class)`, `of(Function, Function)`. |
+| `HiveResponder` | `respond(from, channel, message)` returns a `CompletionStage<String>`. |
+| `NoResponderException` | Nobody answers a request on that target. |
+
+## HiveData
+
+Package `org.abdullahcxd.paperhive.api.data`; see [Shared data](../plugins/shared-data.md). `get`, `set`, `remove`,
+`compareAndSet`, `increment`, `entries(namespace)`, `watch(key, DataListener)`.
+
 ## HiveServer
 
 One server. A `HiveServer` stays valid while the server exists, across restarts, so you can keep a reference.

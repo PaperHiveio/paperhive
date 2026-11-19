@@ -53,7 +53,10 @@ tasks.shadowJar {
     archiveClassifier.set("")
     mergeServiceFiles()
     // log4j-api ships as a multi-release jar; without this its Java 9+ StackLocator is skipped
-    manifest { attributes("Multi-Release" to "true", "Add-Opens" to addOpens.joinToString(" ")) }
+    manifest {
+        attributes("Multi-Release" to "true", "Add-Opens" to addOpens.joinToString(" "),
+            "Implementation-Title" to "Paperhive", "Implementation-Version" to project.version.toString())
+    }
 }
 
 tasks.named<JavaExec>("run") {

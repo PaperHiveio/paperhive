@@ -72,6 +72,7 @@ What `onServerStart` gets through `context.getContext()`:
 
 | Method                  |                                                                                                        |
 |-------------------------|--------------------------------------------------------------------------------------------------------|
+| `key("name")`           | A [namespaced key](namespaced.md) in your plugin's namespace: the same key the server half's `key("name")` gives. |
 | `getLogger()`           | An SLF4J `Logger` that prefixes messages with `[<plugin name>]`. Use `{}` placeholders.                |
 | `getPluginDescriptor()` | Your `paperhive.yml`: `getName()`, `getVersion()`, `getDescription()`, `getMain()`, `getServerMain()`. |
 | `getPluginManager()`    | Enable, disable or find other Hive plugins.                                                            |
