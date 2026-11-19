@@ -15,6 +15,7 @@ import org.abdullahcxd.paperhive.api.internal.BridgeHooks;
 import org.abdullahcxd.paperhive.api.internal.BridgeHooks.ServerHalf;
 import org.abdullahcxd.paperhive.bridge.event.HiveServerStateEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public final class PaperhiveBridge extends JavaPlugin {
     private record Running(HiveBukkitPlugin plugin, ServerHalfLoader loader) {}
 
     private final List<Running> halves = new ArrayList<>();
+    private BridgeEvents events;
 
     @Override
     public void onEnable() {
@@ -55,6 +57,8 @@ public final class PaperhiveBridge extends JavaPlugin {
         });
         // owned by this server (this class is), so the host drops it when the server stops
         Paperhive.getHive().getEventBus().register(new StateRelay(server));
+        events = new BridgeEvents(this, server);
+        events.start();
 
         long start = System.nanoTime();
         List<ServerHalf> wanted = hooks.serverHalves();
@@ -70,12 +74,12 @@ public final class PaperhiveBridge extends JavaPlugin {
     }
 
     /** Paper keeps TPS and tick times in volatile/rolling fields and the player list concurrent, so any thread may read. */
-    private HiveServerStats stats() {
+    private @NonNull HiveServerStats stats() {
         double[] tps = getServer().getTPS();
         return new HiveServerStats(tps[0], tps[1], tps[2], getServer().getAverageTickTime(), getServer().getOnlinePlayers().size(), getServer().getMaxPlayers());
     }
 
-    private void enable(ServerHalf half, HiveServer server) {
+    private void enable(@NonNull ServerHalf half, HiveServer server) {
         TagResolver names = TagResolver.resolver(Placeholder.unparsed("name", half.name()), Placeholder.unparsed("version", half.version()),
                 Placeholder.unparsed("jar", String.valueOf(half.jar().getFileName())));
         say("<gray>> Loading</gray> <aqua><name></aqua> <dark_gray>v<version> from <jar></dark_gray>", names);
@@ -101,6 +105,7 @@ public final class PaperhiveBridge extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (events != null) events.stop();
         if (!halves.isEmpty()) say("<gray>Disabling</gray> <white><count></white> <gray>server half(s)</gray>", Placeholder.unparsed("count", String.valueOf(halves.size())));
         for (Running h : halves.reversed()) {
             try {
@@ -139,7 +144,7 @@ public final class PaperhiveBridge extends JavaPlugin {
         }
 
         @Subscribe(priority = Priority.MONITOR)
-        private void onStateChange(ServerStateChangeEvent event) {
+        private void onStateChange(@NonNull ServerStateChangeEvent event) {
             HiveServer server = event.getServer();
             HiveServerState to = event.getTo();
             if (!isEnabled()) return; // this server is stopping

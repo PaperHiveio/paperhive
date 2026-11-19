@@ -181,7 +181,12 @@ host loader                         instance "lobby"                    instance
 - `ApiGateLoader` shares `org.abdullahcxd.paperhive.*` from the host except `org.abdullahcxd.paperhive.bridge.*`
   (`HiveBukkitPlugin` and the bridge need Bukkit, so they load per server).
 - Server halves don't appear in Paper's `/plugins` (only `Paperhive` does), and Bukkit's per-plugin features they
-  don't have (`getConfig()`, `plugin.yml` permissions/dependencies) are replaced by the above or plain Bukkit APIs.
+  don't have (`plugin.yml` permissions/dependencies) are replaced by plain Bukkit APIs; `getConfig()` is reimplemented
+  on `HiveBukkitPlugin`.
+- **Bridge events and utilities**: `BridgeEvents` turns Bukkit events into hive-aware ones (`PlayerJoinHiveEvent`,
+  `PlayerLeaveHiveEvent` via `PlayerPresence` marks in shared data, CAS so either quit/join order works) and
+  convenience ones (`PlayerMoveBlockEvent`, `PlayerDamageByPlayerEvent`, `PlayerIdleEvent`; hot-path ones built only
+  when listened to). `bridge.util` has `Text`, `ItemBuilder`, `Cooldowns`.
 
 **Talking between the halves.** They're loaded by different loaders, so a class from the plugin's own jar is a
 different class in each half (and in each server). They talk through the Hive API: events, messages, `HiveServer`.

@@ -15,15 +15,31 @@ import org.abdullahcxd.paperhive.api.message.HiveMessage;
 import org.abdullahcxd.paperhive.api.message.HiveService;
 import org.abdullahcxd.paperhive.api.message.MessageCodec;
 import org.abdullahcxd.paperhive.bridge.event.HiveMessageEvent;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.abdullahcxd.paperhive.bridge.util.Text;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.event.Event;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -63,6 +79,7 @@ public abstract class HiveBukkitPlugin {
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Commands>> commands = new CopyOnWriteArrayList<>();
     private final List<Registration> registrations = new CopyOnWriteArrayList<>();
+    private volatile FileConfiguration config;
 
     /** Set up by the bridge before {@link #onEnable()}. */
     final void initialize(Plugin owner, String name, String version, HiveServer hiveServer) {
@@ -155,6 +172,100 @@ public abstract class HiveBukkitPlugin {
         return getServer().getScheduler().runTaskAsynchronously(owner, task);
     }
 
+    /** {@link #runTaskLater} with a duration instead of ticks (rounded down to whole ticks, 50 ms each). */
+    public final @NotNull BukkitTask runLater(@NotNull Duration delay, @NotNull Runnable task) {
+        return runTaskLater(task, ticks(delay));
+    }
+
+    /** {@link #runTaskTimer} with durations instead of ticks: {@code runTimer(Duration.ZERO, Duration.ofSeconds(1), this::tick)}. */
+    public final @NotNull BukkitTask runTimer(@NotNull Duration delay, @NotNull Duration period, @NotNull Runnable task) {
+        return runTaskTimer(task, ticks(delay), Math.max(1, ticks(period)));
+    }
+
+    private static long ticks(Duration duration) {
+        return duration.toMillis() / 50;
+    }
+
+    /**
+     * Listens to one Bukkit event type with a lambda, no {@link Listener} class needed. Removed with the returned
+     * {@link Registration}, or by itself when this plugin is disabled.
+     * <pre>{@code
+     * on(PlayerJoinEvent.class, e -> e.joinMessage(Text.mini("<yellow>+ <name>", Placeholder.unparsed("name", e.getPlayer().getName()))));
+     * }</pre>
+     */
+    public final <E extends Event> @NotNull Registration on(@NotNull Class<E> type, @NotNull Consumer<? super E> handler) {
+        return on(type, EventPriority.NORMAL, false, handler);
+    }
+
+    /** {@link #on(Class, Consumer)} at a priority, optionally skipping events another listener already cancelled. */
+    public final <E extends Event> @NotNull Registration on(@NotNull Class<E> type, @NotNull EventPriority priority, boolean ignoreCancelled, @NotNull Consumer<? super E> handler) {
+        Listener listener = new Listener() {};
+        // the executor gets subtypes too (Bukkit registers by the type's handler list), hence the instance check
+        getServer().getPluginManager().registerEvent(type, listener, priority, (l, event) -> {
+            if (type.isInstance(event)) handler.accept(type.cast(event));
+        }, owner, ignoreCancelled);
+        return track(() -> HandlerList.unregisterAll(listener));
+    }
+
+    /** A Bukkit key in this plugin's namespace (for persistent data, recipes, ...): {@code bukkitKey("wand")} is {@code <plugin name>:wand}. */
+    public final @NotNull NamespacedKey bukkitKey(@NotNull String value) {
+        Namespaced key = key(value);
+        return new NamespacedKey(key.namespace(), key.value());
+    }
+
+    /** Sends a MiniMessage text: {@code send(player, "<green>Saved <count> homes", Placeholder.unparsed("count", "3"))}. */
+    public final void send(@NotNull Audience to, @NotNull String miniMessage, @NotNull TagResolver @NotNull ... placeholders) {
+        to.sendMessage(Text.mini(miniMessage, placeholders));
+    }
+
+    /**
+     * {@code config.yml} in {@link #getDataFolder()}, loaded on first use, with the jar's own {@code config.yml} (if
+     * any) as defaults for missing keys. Like a Bukkit plugin's: {@link #saveDefaultConfig()}, {@link #saveConfig()},
+     * {@link #reloadConfig()}.
+     */
+    public final @NotNull FileConfiguration getConfig() {
+        if (config == null) reloadConfig();
+        return config;
+    }
+
+    /** Reads {@code config.yml} again from disk. */
+    public final void reloadConfig() {
+        YamlConfiguration loaded = YamlConfiguration.loadConfiguration(configFile().toFile());
+        try (InputStream defaults = getClass().getClassLoader().getResourceAsStream("config.yml")) {
+            if (defaults != null) loaded.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(defaults, StandardCharsets.UTF_8)));
+        } catch (IOException e) {
+            logger.warn("Cannot read the default config.yml from the jar", e);
+        }
+        config = loaded;
+    }
+
+    /** Writes the jar's {@code config.yml} to {@link #getDataFolder()} unless one is there already. */
+    public final void saveDefaultConfig() {
+        Path file = configFile();
+        if (Files.exists(file)) return;
+        try (InputStream defaults = getClass().getClassLoader().getResourceAsStream("config.yml")) {
+            if (defaults == null) throw new IllegalStateException(name + " has no config.yml in its jar");
+            Files.createDirectories(file.getParent());
+            Files.copy(defaults, file);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot write " + file, e);
+        }
+    }
+
+    /** Writes {@link #getConfig()} back to {@code config.yml}. */
+    public final void saveConfig() {
+        try {
+            Files.createDirectories(getDataFolder());
+            getConfig().save(configFile().toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot write " + configFile(), e);
+        }
+    }
+
+    private Path configFile() {
+        return getDataFolder().resolve("config.yml");
+    }
+
     /** A key in this plugin's namespace: {@code key("joins")} is {@code <plugin name>:joins}. */
     public final @NotNull Namespaced key(@NotNull String value) {
         return Namespaced.forPlugin(name, value);
@@ -201,7 +312,7 @@ public abstract class HiveBukkitPlugin {
                 onMain(() -> getServer().getPluginManager().callEvent(new HiveMessageEvent(from, channel, message)))));
     }
 
-    private Registration track(Registration registration) {
+    private @NonNull Registration track(Registration registration) {
         registrations.add(registration);
         return () -> {
             registration.unregister();

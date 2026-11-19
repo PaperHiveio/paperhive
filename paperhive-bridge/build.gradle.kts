@@ -8,6 +8,8 @@ dependencies {
     // shared from the host through ApiGateLoader at runtime
     compileOnly(project(":paperhive-api"))
     compileOnly(project(":paperhive-plugin"))
+
+    testImplementation(project(":paperhive-api"))
 }
 
 tasks.processResources {

@@ -161,6 +161,11 @@ plugins can listen too.
 |---|---|
 | `HiveServerStateEvent` | Any server of the hive changes state. `getServer()`, `getFrom()`, `getTo()`, `isThisServer()`. |
 | `HiveMessageEvent` | A message arrives on a channel this server [relays](messaging.md#messages-as-bukkit-events). `getChannel()`, `getFrom()`, `getMessage()`, `decode(codec)`, `is(key)`. |
+| `PlayerJoinHiveEvent` | A player joined this server. `getPreviousServer()` is the hive server the proxy moved them from, or null; `isNewToHive()`. Bukkit's join event can't tell the two apart. |
+| `PlayerLeaveHiveEvent` | A player left the whole hive, not just this server: fired where they quit, 10 seconds later, unless they joined another hive server meanwhile. `getPlayer()` is an `OfflinePlayer`. |
+| `PlayerMoveBlockEvent` | A player moved into another block or world (not every head turn, like `PlayerMoveEvent`). Cancellable; `getFrom()`, `getTo()`, `isNewChunk()`. |
+| `PlayerDamageByPlayerEvent` | A player hurt another, by hand or with a projectile they shot. `getPlayer()` is the victim; `getAttacker()`, `getProjectile()`, `get/setDamage()`, `isLethal()`. Cancellable. |
+| `PlayerIdleEvent` | A player went idle after 5 minutes without moving, looking, chatting, commands or clicks (`isIdle()` true), or came back (false). |
 
 ```java
 @EventHandler
@@ -171,7 +176,62 @@ public void onHiveServer(HiveServerStateEvent event) {
 }
 ```
 
-They're in `org.abdullahcxd.paperhive.bridge.event`.
+They're in `org.abdullahcxd.paperhive.bridge.event`. The move and damage events cost nothing while no one listens.
+
+```java
+on(PlayerJoinHiveEvent.class, e -> {
+    if (e.isNewToHive()) getServer().broadcast(Text.mini("<yellow><name> joined the network",
+            Placeholder.unparsed("name", e.getPlayer().getName())));
+});
+on(PlayerIdleEvent.class, e -> e.getPlayer().playerListName(e.isIdle() ? Text.mini("<gray>" + e.getPlayer().getName() + " (AFK)") : null));
+```
+
+## Utilities
+
+Shortcuts for what most plugins write again and again. The first group is on `HiveBukkitPlugin`:
+
+| Method | What it does |
+|---|---|
+| `on(type, handler)` | Listens to a Bukkit event with a lambda, no `Listener` class. Returns a `Registration`; removed on disable anyway. An overload takes the `EventPriority` and `ignoreCancelled`. |
+| `runLater(duration, task)`, `runTimer(delay, period, task)` | Scheduling with `Duration` instead of ticks. |
+| `send(audience, text, placeholders...)` | Sends a MiniMessage text. |
+| `bukkitKey(value)` | A Bukkit `NamespacedKey` in your plugin's namespace, for persistent data and recipes. |
+| `getConfig()`, `saveDefaultConfig()`, `saveConfig()`, `reloadConfig()` | `config.yml` in `getDataFolder()`, with your jar's `config.yml` as defaults, like a Bukkit plugin's. |
+
+And in `org.abdullahcxd.paperhive.bridge.util`:
+
+| Class | What it does |
+|---|---|
+| `Text` | `Text.mini(text, placeholders...)` parses MiniMessage; `Text.item(...)` does the same without the italics Minecraft adds to item names; `Text.strip(text)` removes the tags. |
+| `ItemBuilder` | Builds an `ItemStack` in one expression: `name`, `lore` (MiniMessage), `amount`, `enchant`, `glow`, `unbreakable`, `flags`, `tag` (persistent data), `meta` for anything else. |
+| `Cooldowns<K>` | Per-key cooldowns, safe from any thread: `tryUse(key)`, `remaining(key)`, `reset(key)`. |
+
+```java
+private final Cooldowns<UUID> heal = new Cooldowns<>(Duration.ofSeconds(30));
+private ItemStack wand;
+
+@Override
+public void onEnable() {
+    saveDefaultConfig();
+    wand = ItemBuilder.of(Material.BLAZE_ROD)
+            .name(getConfig().getString("wand-name", "<gold>Hive Wand"))
+            .glow()
+            .tag(bukkitKey("wand"), PersistentDataType.BOOLEAN, true)
+            .build();
+
+    on(PlayerInteractEvent.class, e -> {
+        ItemStack item = e.getItem();
+        if (item == null || !item.getPersistentDataContainer().has(bukkitKey("wand"))) return;
+        Player player = e.getPlayer();
+        if (!heal.tryUse(player.getUniqueId())) {
+            send(player, "<red>Wait <s>s", Placeholder.unparsed("s", String.valueOf(heal.remaining(player.getUniqueId()).toSeconds() + 1)));
+            return;
+        }
+        player.heal(20);
+        send(player, "<green>Healed!");
+    });
+}
+```
 
 ## What the bridge logs
 
@@ -190,7 +250,6 @@ The bridge reports what passes between it and the host in each server's console,
 
 Because it isn't a `JavaPlugin`, some Bukkit-plugin features aren't there:
 
-- **No `getConfig()`**: read and write your own files in `getDataFolder()` (e.g. with Bukkit's `YamlConfiguration`).
 - **No `plugin.yml` permissions or dependencies**: register permissions with Bukkit's `PluginManager` if you need to.
 - **Not listed in `/plugins`**: only `Paperhive` (the bridge) appears there.
 
