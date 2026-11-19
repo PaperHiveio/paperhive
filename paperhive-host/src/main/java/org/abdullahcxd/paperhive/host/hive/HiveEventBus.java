@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.hive;
 
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.api.Registration;

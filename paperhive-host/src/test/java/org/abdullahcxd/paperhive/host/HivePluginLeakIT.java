@@ -1,5 +1,8 @@
 package org.abdullahcxd.paperhive.host;
 
+import org.abdullahcxd.paperhive.host.hive.HostHive;
+import org.abdullahcxd.paperhive.host.hive.TestHive;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.api.HiveServer;
 import org.abdullahcxd.paperhive.api.HiveServerStats;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
@@ -7,8 +10,8 @@ import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
 import org.abdullahcxd.paperhive.host.instance.Leaks;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.paperclip.PaperclipCache;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.abdullahcxd.paperhive.host.plugin.HivePluginManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -46,7 +49,7 @@ class HivePluginLeakIT {
         HostHive hive = TestHive.get();
         Path cache = Path.of(System.getProperty("paperhive.it.cache", tmp.resolve("cache").toString()));
         HivePluginManager plugins = new HivePluginManager(hive::deliver, hive::release);
-        try (PatchedServer server = PaperclipCache.prepare(Path.of(System.getProperty("paperhive.it.paperJar")), cache)) {
+        try (PreparedServer server = PaperclipCache.prepare(Path.of(System.getProperty("paperhive.it.paperJar")), cache)) {
             Path bridge = tmp.resolve("paperhive-bridge.jar");
             try (InputStream in = getClass().getResourceAsStream("/paperhive-bridge.jar")) {
                 Files.copy(in, bridge);

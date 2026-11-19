@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.plugin.logger;
 
+import org.jetbrains.annotations.Nullable;
 import org.abdullahcxd.paperhive.plugin.PaperhivePlugin;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -25,7 +26,7 @@ public class PluginLogger extends AbstractLogger {
     }
 
     @Override
-    protected void handleNormalizedLoggingCall(Level level, Marker marker, String msg, Object[] args, Throwable t) {
+    protected void handleNormalizedLoggingCall(@NotNull Level level, @Nullable Marker marker, @NotNull String msg, Object @Nullable [] args, @Nullable Throwable t) {
         LoggingEventBuilder event = delegate.makeLoggingEventBuilder(level)
                 .setMessage(prefix + msg)
                 .setCause(t);
@@ -35,19 +36,19 @@ public class PluginLogger extends AbstractLogger {
     }
 
     @Override
-    protected String getFullyQualifiedCallerName() {
+    protected @Nullable String getFullyQualifiedCallerName() {
         return null;
     }
 
     @Override public boolean isTraceEnabled() { return delegate.isTraceEnabled(); }
-    @Override public boolean isTraceEnabled(Marker marker) { return delegate.isTraceEnabled(marker); }
+    @Override public boolean isTraceEnabled(@Nullable Marker marker) { return delegate.isTraceEnabled(marker); }
     @Override public boolean isDebugEnabled() { return delegate.isDebugEnabled(); }
-    @Override public boolean isDebugEnabled(Marker marker) { return delegate.isDebugEnabled(marker); }
+    @Override public boolean isDebugEnabled(@Nullable Marker marker) { return delegate.isDebugEnabled(marker); }
     @Override public boolean isInfoEnabled() { return delegate.isInfoEnabled(); }
-    @Override public boolean isInfoEnabled(Marker marker) { return delegate.isInfoEnabled(marker); }
+    @Override public boolean isInfoEnabled(@Nullable Marker marker) { return delegate.isInfoEnabled(marker); }
     @Override public boolean isWarnEnabled() { return delegate.isWarnEnabled(); }
-    @Override public boolean isWarnEnabled(Marker marker) { return delegate.isWarnEnabled(marker); }
+    @Override public boolean isWarnEnabled(@Nullable Marker marker) { return delegate.isWarnEnabled(marker); }
     @Override public boolean isErrorEnabled() { return delegate.isErrorEnabled(); }
-    @Override public boolean isErrorEnabled(Marker marker) { return delegate.isErrorEnabled(marker); }
+    @Override public boolean isErrorEnabled(@Nullable Marker marker) { return delegate.isErrorEnabled(marker); }
 
 }

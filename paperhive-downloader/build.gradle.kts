@@ -1,19 +1,11 @@
+// Downloads and verifies server jars from the Paperhive mirror
 plugins {
-    id("java")
+    id("paperhive.java")
 }
 
 dependencies {
     implementation(project(":paperhive-constants"))
-
-    implementation(platform("tools.jackson:jackson-bom:3.3.0"))
-    implementation("tools.jackson.core:jackson-databind")
-    implementation("tools.jackson.dataformat:jackson-dataformat-yaml")
-
-    testImplementation(platform("org.junit:junit-bom:6.0.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.test {
-    useJUnitPlatform()
+    implementation(platform(libs.jackson.bom))
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.yaml)
 }

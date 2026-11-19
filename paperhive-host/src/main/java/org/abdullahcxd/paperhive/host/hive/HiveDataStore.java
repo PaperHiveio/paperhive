@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.hive;
 
 import org.abdullahcxd.paperhive.api.Namespaced;
 import org.abdullahcxd.paperhive.api.Registration;

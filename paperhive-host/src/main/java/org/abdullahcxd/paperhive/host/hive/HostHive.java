@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.hive;
 
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.api.Hive;
 import org.abdullahcxd.paperhive.api.HiveMessageListener;
@@ -80,12 +81,10 @@ public final class HostHive implements Hive, BridgeHooks {
      *
      * @param serverHalves the Hive plugin server halves a server loads (its bridge asks)
      */
-    public void init(ServerManager servers, Function<HiveConfig.Server, List<ServerHalf>> serverHalves) {
+    public void init(@NotNull ServerManager servers, @NotNull Function<HiveConfig.Server, List<ServerHalf>> serverHalves) {
         this.servers = servers;
         this.serverHalves = serverHalves;
     }
-
-    // ---- Hive ----
 
     @Override
     public @NotNull @Unmodifiable List<HiveServer> getServers() {
@@ -208,8 +207,6 @@ public final class HostHive implements Hive, BridgeHooks {
         return data;
     }
 
-    // ---- BridgeHooks ----
-
     @Override
     public void bridgeEnabled(@NotNull Executor mainThread, @NotNull Supplier<HiveServerStats> stats) {
         ServerInstance caller = caller();
@@ -230,10 +227,8 @@ public final class HostHive implements Hive, BridgeHooks {
         return serverHalves.apply(servers.server(caller.getName()));
     }
 
-    // ---- from the host ----
-
     /** Every instance's state listener: posts the state events on the event thread. */
-    void stateChanged(ServerInstance instance, ServerInstance.State from, ServerInstance.State to) {
+    public void stateChanged(@NotNull ServerInstance instance, ServerInstance.@NotNull State from, ServerInstance.@NotNull State to) {
         if (to == ServerInstance.State.STOPPED || to == ServerInstance.State.CRASHED) {
             bridges.remove(instance.getName());
             release(instance);
@@ -252,12 +247,12 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     /** Asked before a start through Paperhive (not a crash restart); false if a subscriber cancelled it. */
-    boolean allowStart(String name) {
+    public boolean allowStart(@NotNull String name) {
         return !bus.post(new ServerStartEvent(handle(name))).isCancelled();
     }
 
     /** Drops the event listeners and message subscriptions {@code owner} made (a stopped server, a disabled Hive plugin's loader). */
-    void release(Object owner) {
+    public void release(@NotNull Object owner) {
         bus.unregisterOwnedBy(owner);
         channels.values().forEach(subs -> subs.removeIf(o -> o.owner() == owner));
         responders.values().forEach(list -> list.removeIf(o -> o.owner() == owner));
@@ -289,7 +284,7 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     /** Runs on the events thread (in order with events and messages). */
-    void deliver(Runnable task) {
+    public void deliver(@NotNull Runnable task) {
         events.execute(() -> {
             try {
                 task.run();
@@ -299,11 +294,11 @@ public final class HostHive implements Hive, BridgeHooks {
         });
     }
 
-    HiveConfig.Server config(String name) {
+    public HiveConfig.@NotNull Server config(@NotNull String name) {
         return servers.server(name);
     }
 
-    HiveServer handle(String name) {
+    public @NotNull HiveServer handle(@NotNull String name) {
         return handles.computeIfAbsent(name, Handle::new);
     }
 
@@ -352,9 +347,9 @@ public final class HostHive implements Hive, BridgeHooks {
             }
         }
 
-        @Override public boolean equals(Object o) { return o instanceof Handle h && h.name.equals(name); }
+        @Override public boolean equals(@Nullable Object o) { return o instanceof Handle h && h.name.equals(name); }
         @Override public int hashCode() { return name.hashCode(); }
-        @Override public String toString() { return name; }
+        @Override public @NotNull String toString() { return name; }
     }
 
 }

@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software.paper;
 
 import java.io.InputStream;
 import java.nio.file.Files;

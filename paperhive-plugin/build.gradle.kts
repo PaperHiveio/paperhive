@@ -1,4 +1,8 @@
+// The Hive plugin API (host halves). The API comes from the host at runtime.
+plugins {
+    id("paperhive.library")
+}
+
 dependencies {
-    compileOnly(project(":paperhive-api"))      // runtime copy comes from the parent loader, so use compileOnly instead:
-    // compileOnly(project(":paperhive-api"))
+    compileOnly(project(":paperhive-api"))
 }

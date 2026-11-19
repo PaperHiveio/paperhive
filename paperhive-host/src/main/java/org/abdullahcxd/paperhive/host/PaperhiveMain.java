@@ -1,5 +1,10 @@
 package org.abdullahcxd.paperhive.host;
 
+import org.abdullahcxd.paperhive.host.console.ControlSocket;
+import org.abdullahcxd.paperhive.host.console.HiveConsole;
+import org.abdullahcxd.paperhive.host.hive.HostHive;
+import org.abdullahcxd.paperhive.host.server.MemoryWatch;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.downloader.PaperhiveDownloader;
 import org.abdullahcxd.paperhive.api.HiveServer;
 import org.abdullahcxd.paperhive.api.Paperhive;
@@ -9,8 +14,8 @@ import org.abdullahcxd.paperhive.host.plugin.HivePluginManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.paperclip.PaperclipCache;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -65,7 +70,7 @@ public final class PaperhiveMain {
         HiveConfig.Host host = config.host();
         Path paperJar = PaperhiveDownloader.fetch(config.software(), config.version(), host.cache(), host.mirror());
         // not closed: the instances run from it for the rest of the JVM's life, and the OS drops the lock on exit
-        PatchedServer server = PaperclipCache.prepare(paperJar, host.paperclipCache());
+        PreparedServer server = PaperclipCache.prepare(paperJar, host.paperclipCache());
 
         HostHive hive = new HostHive();
         Paperhive.setHive(hive);

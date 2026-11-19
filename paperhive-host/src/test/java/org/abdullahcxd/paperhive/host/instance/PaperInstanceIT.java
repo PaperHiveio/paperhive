@@ -1,7 +1,7 @@
 package org.abdullahcxd.paperhive.host.instance;
 
-import org.abdullahcxd.paperhive.host.paperclip.PaperclipCache;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -46,7 +46,7 @@ class PaperInstanceIT {
     @Test
     @EnabledIfSystemProperty(named = "com.mojang.eula.agree", matches = "true")
     void restartsWithoutLeakingClassesOrThreads() throws Exception {
-        try (PatchedServer server = prepare()) {
+        try (PreparedServer server = prepare()) {
             Path root = tmp.resolve("instance");
             int port = freePort();
             Files.createDirectories(root);
@@ -100,7 +100,7 @@ class PaperInstanceIT {
     @Test
     void eulaNotAcceptedStopsWithoutExitingTheJvm() throws Exception {
         String agreed = System.clearProperty("com.mojang.eula.agree");
-        try (PatchedServer server = prepare()) {
+        try (PreparedServer server = prepare()) {
             ServerInstance instance = new ServerInstance("eula", tmp.resolve("eula"), server,
                     new ApiGateLoader(getClass().getClassLoader()));
             instance.start();
@@ -123,7 +123,7 @@ class PaperInstanceIT {
         // the host's own log (logs/latest.log) does belong in the cwd; start it before taking the snapshot
         org.slf4j.LoggerFactory.getLogger(getClass()).info("Checking that instances leave {} alone", cwd);
         Set<String> cwdBefore = listing(cwd);
-        try (PatchedServer server = prepare()) {
+        try (PreparedServer server = prepare()) {
             ApiGateLoader gate = new ApiGateLoader(getClass().getClassLoader());
             List<ServerInstance> instances = new ArrayList<>();
             Map<ServerInstance, Integer> ports = new HashMap<>();
@@ -175,7 +175,7 @@ class PaperInstanceIT {
     @Test
     @EnabledIfSystemProperty(named = "com.mojang.eula.agree", matches = "true")
     void twoInstancesAreJoinableAndRestartIndependently() throws Exception {
-        try (PatchedServer server = prepare()) {
+        try (PreparedServer server = prepare()) {
             ApiGateLoader gate = new ApiGateLoader(getClass().getClassLoader());
             Map<String, Integer> ports = new HashMap<>();
             Map<String, ServerInstance> instances = new HashMap<>();
@@ -258,7 +258,7 @@ class PaperInstanceIT {
         }
     }
 
-    private PatchedServer prepare() {
+    private PreparedServer prepare() {
         Path cache = Path.of(System.getProperty("paperhive.it.cache", tmp.resolve("cache").toString()));
         return PaperclipCache.prepare(Path.of(System.getProperty("paperhive.it.paperJar")), cache);
     }

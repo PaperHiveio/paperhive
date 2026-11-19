@@ -14,17 +14,17 @@ public final class PaperhiveDownloader {
     private PaperhiveDownloader() {}
 
     /** Downloads into {@code destination} and returns the copied jar. */
-    public static Path download(@NotNull MCSoftware software, MCVersion version, Path destination) {
+    public static @NotNull Path download(@NotNull MCSoftware software, @NotNull MCVersion version, @NotNull Path destination) {
         return downloaderFor(software, DirectoryConstants.CACHE_DIRECTORY_PATH, DownloaderConstants.CDN_URI).download(software, version, destination);
     }
 
     /** Returns the verified jar inside the shared cache, downloading it first if needed. No copy is made. */
-    public static Path fetch(@NotNull MCSoftware software, MCVersion version) {
+    public static @NotNull Path fetch(@NotNull MCSoftware software, @NotNull MCVersion version) {
         return fetch(software, version, DirectoryConstants.CACHE_DIRECTORY_PATH, DownloaderConstants.CDN_URI);
     }
 
     /** Like {@link #fetch(MCSoftware, MCVersion)}, with another cache folder and mirror. */
-    public static Path fetch(@NotNull MCSoftware software, MCVersion version, Path cache, String mirror) {
+    public static @NotNull Path fetch(@NotNull MCSoftware software, @NotNull MCVersion version, @NotNull Path cache, @NotNull String mirror) {
         return downloaderFor(software, cache, mirror).fetch(software, version);
     }
 

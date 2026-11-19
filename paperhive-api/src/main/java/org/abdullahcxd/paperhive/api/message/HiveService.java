@@ -75,7 +75,7 @@ public final class HiveService<Q, R> {
     }
 
     @Override
-    public String toString() {
+    public @NotNull String toString() {
         return "HiveService[" + key + "]";
     }
 

@@ -7,6 +7,9 @@ log4j = "2.26.1"
 jline = "4.7.0"
 paper-api = "1.21.11-R0.1-SNAPSHOT"
 velocity-api = "3.4.0-SNAPSHOT"
+junit = "6.1.3"
+jetbrains-annotations = "26.1.0"
+lombok = "1.18.48"
 
 [libraries]
 jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
@@ -21,6 +24,11 @@ log4j-slf4j2-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl" }
 jline = { module = "org.jline:jline", version.ref = "jline" }
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
 velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity-api" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

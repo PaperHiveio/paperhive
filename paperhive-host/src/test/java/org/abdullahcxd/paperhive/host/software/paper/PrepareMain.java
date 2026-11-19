@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software.paper;
 
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import java.nio.file.Path;
 
 /**
@@ -9,7 +10,7 @@ import java.nio.file.Path;
 public final class PrepareMain {
 
     public static void main(String[] args) {
-        try (PatchedServer server = PaperclipCache.prepare(Path.of(args[0]), Path.of(args[1]))) {
+        try (PreparedServer server = PaperclipCache.prepare(Path.of(args[0]), Path.of(args[1]))) {
             System.out.println("Main class: " + server.mainClass());
         }
     }

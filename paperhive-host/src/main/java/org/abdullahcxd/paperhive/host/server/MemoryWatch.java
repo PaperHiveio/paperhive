@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.server;
 
 import com.sun.management.HotSpotDiagnosticMXBean;
 import org.jetbrains.annotations.NotNull;
@@ -21,9 +21,9 @@ import java.util.function.Supplier;
  * {@code OutOfMemoryError}; and turns on a heap dump at the first {@code OutOfMemoryError} unless the launch flags
  * chose otherwise.
  */
-final class MemoryWatch {
+public final class MemoryWatch {
 
-    static final double WARN_AT = 0.9;
+    public static final double WARN_AT = 0.9;
 
     private MemoryWatch() {}
 
@@ -32,7 +32,7 @@ final class MemoryWatch {
      * @param running  the servers running, for the warning
      * @return removes the watch
      */
-    static @NotNull Runnable install(double fraction, Supplier<List<String>> running, Consumer<String> warn) {
+    public static @NotNull Runnable install(double fraction, @NotNull Supplier<List<String>> running, @NotNull Consumer<String> warn) {
         for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
             long max = pool.getUsage().getMax();
             if (pool.getType() == MemoryType.HEAP && pool.isCollectionUsageThresholdSupported() && max > 0) {
@@ -59,7 +59,7 @@ final class MemoryWatch {
     }
 
     /** A heap dump in {@code dir} at the first OutOfMemoryError, unless {@code -XX:...HeapDumpOnOutOfMemoryError} was given. */
-    static void dumpHeapOnOutOfMemory(Path dir) {
+    public static void dumpHeapOnOutOfMemory(@NotNull Path dir) {
         HotSpotDiagnosticMXBean hotspot = ManagementFactory.getPlatformMXBean(HotSpotDiagnosticMXBean.class);
         if (hotspot.getVMOption("HeapDumpOnOutOfMemoryError").getOrigin() != com.sun.management.VMOption.Origin.DEFAULT) return;
         hotspot.setVMOption("HeapDumpPath", dir.toAbsolutePath().toString());

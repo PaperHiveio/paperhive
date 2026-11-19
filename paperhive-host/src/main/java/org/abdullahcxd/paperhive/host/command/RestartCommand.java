@@ -1,6 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -12,7 +12,7 @@ final class RestartCommand extends ServerCommand {
     }
 
     @Override
-    protected void execute(@NotNull HiveCommandSender sender, ServerInstance instance) {
+    protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         servers.restart(instance);
         sender.sendMessage("Restarting " + instance.getName());
     }

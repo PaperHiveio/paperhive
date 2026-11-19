@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software.paper;
 
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.downloader.FileSHA256;
 import org.jetbrains.annotations.NotNull;
@@ -59,9 +60,9 @@ public final class PaperclipCache {
 
     /**
      * Patches {@code paperJar} into {@code cacheRoot} if needed, prunes entries no host uses, and returns the result.
-     * Close the returned {@link PatchedServer} once nothing runs from it any more.
+     * Close the returned {@link PreparedServer} once nothing runs from it any more.
      */
-    public static synchronized @NotNull PatchedServer prepare(Path paperJar, Path cacheRoot) {
+    public static synchronized @NotNull PreparedServer prepare(@NotNull Path paperJar, @NotNull Path cacheRoot) {
         if (!Files.isRegularFile(paperJar)) {
             throw new PaperclipException("Paper jar not found: " + paperJar.toAbsolutePath());
         }
@@ -96,7 +97,7 @@ public final class PaperclipCache {
 
             acquire(entry);
             prune(root, entry);
-            return new PatchedServer(serverJar, libraries, mainClass, () -> release(entry));
+            return new PreparedServer(serverJar, libraries, mainClass, () -> release(entry));
         } catch (IOException e) {
             throw new PaperclipException("Could not use cache " + root, e);
         }

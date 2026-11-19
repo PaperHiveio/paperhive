@@ -155,8 +155,6 @@ public abstract class HiveBukkitPlugin {
         return getServer().getScheduler().runTaskAsynchronously(owner, task);
     }
 
-    // ---- hive utilities ----
-
     /** A key in this plugin's namespace: {@code key("joins")} is {@code <plugin name>:joins}. */
     public final @NotNull Namespaced key(@NotNull String value) {
         return Namespaced.forPlugin(name, value);

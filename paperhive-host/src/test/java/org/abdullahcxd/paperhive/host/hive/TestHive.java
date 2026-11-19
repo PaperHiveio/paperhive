@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.hive;
 
 import org.abdullahcxd.paperhive.api.Paperhive;
 

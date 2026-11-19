@@ -2,7 +2,7 @@ package org.abdullahcxd.paperhive.host.instance;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -121,7 +121,7 @@ public final class ServerInstance {
     private final String name;
     @Getter
     private final Path root;
-    private final PatchedServer server;
+    private final PreparedServer server;
     private final ApiGateLoader gate;
     @Getter
     private final Options options;
@@ -159,11 +159,11 @@ public final class ServerInstance {
     private volatile HiveJul.@Nullable Namespace jul;
     private volatile CountDownLatch terminated = new CountDownLatch(0);
 
-    public ServerInstance(String name, @NotNull Path root, PatchedServer server, ApiGateLoader gate) {
+    public ServerInstance(String name, @NotNull Path root, PreparedServer server, ApiGateLoader gate) {
         this(name, root, server, gate, Options.DEFAULT);
     }
 
-    public ServerInstance(String name, @NotNull Path root, PatchedServer server, ApiGateLoader gate, Options options) {
+    public ServerInstance(String name, @NotNull Path root, PreparedServer server, ApiGateLoader gate, Options options) {
         this.name = name;
         this.root = root.toAbsolutePath().normalize();
         this.server = server;
@@ -192,11 +192,11 @@ public final class ServerInstance {
         return List.copyOf(args);
     }
 
-    public void addStateListener(StateListener listener) {
+    public void addStateListener(@NotNull StateListener listener) {
         listeners.add(listener);
     }
 
-    public void removeStateListener(StateListener listener) {
+    public void removeStateListener(@NotNull StateListener listener) {
         listeners.remove(listener);
     }
 
@@ -216,7 +216,7 @@ public final class ServerInstance {
         start(serverArgs());
     }
 
-    public synchronized void start(List<String> args) {
+    public synchronized void start(@NotNull List<String> args) {
         if (state == State.STARTING || state == State.RUNNING || state == State.STOPPING) {
             throw new IllegalStateException("Instance " + name + " is " + state);
         }
@@ -274,7 +274,7 @@ public final class ServerInstance {
         reaper.start();
     }
 
-    public @NotNull Thread createMain0(MethodHandle main, Object argv, InstanceClassLoader loader) {
+    public @NotNull Thread createMain0(@NotNull MethodHandle main, @NotNull Object argv, @NotNull InstanceClassLoader loader) {
         Thread main0 = new Thread(group, () -> {
             try {
                 main.invoke(argv);
@@ -298,7 +298,7 @@ public final class ServerInstance {
      *
      * @return true if the instance stopped within {@code timeout} without being forced
      */
-    public boolean stop(Duration timeout) {
+    public boolean stop(@NotNull Duration timeout) {
         InstanceClassLoader loader;
         CountDownLatch done;
         boolean alreadyExiting;
@@ -322,7 +322,7 @@ public final class ServerInstance {
     }
 
     /** Waits until the instance has fully stopped (also after it exits on its own, e.g. the {@code stop} command). */
-    public boolean awaitTermination(Duration timeout) {
+    public boolean awaitTermination(@NotNull Duration timeout) {
         return await(terminated, timeout);
     }
 
@@ -331,7 +331,7 @@ public final class ServerInstance {
     }
 
     /** Runs a console command in the instance, as if typed into its console. */
-    public boolean dispatchCommand(String command) {
+    public boolean dispatchCommand(@NotNull String command) {
         InstanceClassLoader loader = classLoader;
         if (loader == null || (state != State.STARTING && state != State.RUNNING)) return false;
         try {
@@ -364,14 +364,12 @@ public final class ServerInstance {
     }
 
     /** The instance a thread belongs to (its thread group, else its context loader), or null for host threads. */
-    public static @Nullable ServerInstance ofThread(Thread thread) {
+    public static @Nullable ServerInstance ofThread(@NotNull Thread thread) {
         for (ThreadGroup g = thread.getThreadGroup(); g != null; g = g.getParent()) {
             if (g instanceof InstanceThreadGroup group) return group.owner();
         }
         return InstanceHooks.instanceOf(thread.getContextClassLoader());
     }
-
-    // ---- called through InstanceHooks from instance threads ----
 
     void handleExit(int status, boolean halt) {
         List<Thread> hooks = beginExit();
@@ -422,8 +420,6 @@ public final class ServerInstance {
             executor.shutdownNow();
         }
     }
-
-    // ---- internals ----
 
     /** Marks the instance as exiting and hands out its hooks to run, or null if it was already exiting. */
     private synchronized @Nullable List<Thread> beginExit() {
@@ -582,7 +578,7 @@ public final class ServerInstance {
         restart.start();
     }
 
-    public @NotNull Thread createRestart(Object token) {
+    public @NotNull Thread createRestart(@NotNull Object token) {
         Thread restart = new Thread(HOST_GROUP, () -> {
             try {
                 Thread.sleep(options.restartDelay().toMillis());
@@ -777,7 +773,7 @@ public final class ServerInstance {
         }
 
         @Override
-        public void uncaughtException(Thread t, Throwable e) {
+        public void uncaughtException(@NotNull Thread t, @NotNull Throwable e) {
             if (e instanceof InstanceExit) return;
             log.error("Uncaught exception in thread {} of instance {}", t.getName(), name, e);
         }

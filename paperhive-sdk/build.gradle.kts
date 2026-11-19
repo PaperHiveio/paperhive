@@ -2,6 +2,7 @@
 // (all of it is provided at runtime: by the Paperhive host, and by each server for the server half)
 plugins {
     `java-library`
+    id("paperhive.library")
 }
 
 dependencies {

@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.console;
 
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
@@ -27,7 +28,7 @@ import java.nio.file.Path;
  * server names and arguments. Everything printed (logs, server output) goes above the prompt, so typing isn't torn up.
  * With input that isn't a terminal (piped, a service) it reads plain lines without a prompt.
  */
-final class HiveConsole {
+public final class HiveConsole {
 
     private final Terminal terminal;
     private final LineReader reader;
@@ -51,7 +52,7 @@ final class HiveConsole {
     }
 
     /** Opens the terminal and points {@code System.out}/{@code err} above the prompt; before anything logs. */
-    static HiveConsole open() throws IOException {
+    public static @NotNull HiveConsole open() throws IOException {
         Terminal terminal = TerminalBuilder.builder().system(true).dumb(true).build();
         HiveConsole[] self = new HiveConsole[1];
         LineReader reader = LineReaderBuilder.builder()
@@ -78,7 +79,7 @@ final class HiveConsole {
      * The Paperhive logo, a honeycomb, with the version; in colour where the terminal has it (JLine drops the colours
      * for a plain one, e.g. a service's log).
      */
-    void banner(String version) {
+    public void banner(@NotNull String version) {
         AttributedStyle comb = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
         AttributedStyle bold = AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW);
         AttributedStyle name = AttributedStyle.BOLD.foreground(AttributedStyle.WHITE);
@@ -108,7 +109,7 @@ final class HiveConsole {
     }
 
     /** Reads commands in the background for the rest of the JVM's life (or until input ends). */
-    void start(CommandRegistry registry, ServerManager servers) {
+    public void start(@NotNull CommandRegistry registry, @NotNull ServerManager servers) {
         this.registry = registry;
         this.servers = servers;
         Thread thread = new Thread(this::loop, "paperhive-console");

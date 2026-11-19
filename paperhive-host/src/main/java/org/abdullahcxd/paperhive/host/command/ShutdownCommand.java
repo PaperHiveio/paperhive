@@ -1,6 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;

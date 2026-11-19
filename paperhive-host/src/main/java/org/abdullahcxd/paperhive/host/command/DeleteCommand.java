@@ -1,6 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
@@ -13,7 +13,7 @@ final class DeleteCommand extends ServerCommand {
     }
 
     @Override
-    protected void execute(HiveCommandSender sender, @NotNull ServerInstance instance) {
+    protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         String name = instance.getName();
         if (instance.isActive()) {
             sender.sendMessage(name + " is " + instance.getState() + "; stop it first");

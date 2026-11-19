@@ -1,10 +1,10 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jspecify.annotations.NonNull;
@@ -30,7 +30,7 @@ class CommandRegistryTest {
     @BeforeEach
     void setUp() {
         Path file = tmp.resolve(HiveConfig.FILE_NAME);
-        PatchedServer server = new PatchedServer(tmp.resolve("none.jar"), List.of(), "none.Main", () -> {});
+        PreparedServer server = new PreparedServer(tmp.resolve("none.jar"), List.of(), "none.Main", () -> {});
         ApiGateLoader gate = new ApiGateLoader(getClass().getClassLoader());
         servers = new ServerManager(file, HiveConfig.load(file), List.of(), s -> List.of(),
                 s -> new ServerInstance(s.name(), tmp.resolve(s.root()), server, gate, s.options()));

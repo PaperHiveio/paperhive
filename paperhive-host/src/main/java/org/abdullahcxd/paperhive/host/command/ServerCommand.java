@@ -1,6 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
@@ -18,7 +18,7 @@ abstract class ServerCommand extends HiveCommand {
         this.servers = servers;
     }
 
-    protected abstract void execute(HiveCommandSender sender, ServerInstance instance);
+    protected abstract void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance);
 
     @Override
     public final void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {

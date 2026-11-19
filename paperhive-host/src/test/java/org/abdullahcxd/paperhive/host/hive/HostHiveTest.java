@@ -1,5 +1,7 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.hive;
 
+import org.abdullahcxd.paperhive.host.server.ServerManager;
+import org.abdullahcxd.paperhive.host.server.TestServers;
 import org.abdullahcxd.paperhive.api.HiveServer;
 import org.abdullahcxd.paperhive.api.HiveServerState;
 import org.abdullahcxd.paperhive.api.Namespaced;

@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.plugin;
 
+import org.jetbrains.annotations.NotNull;
 import lombok.Getter;
 import org.abdullahcxd.paperhive.api.Namespaced;
 import org.abdullahcxd.paperhive.plugin.context.PluginContext;
@@ -30,31 +31,31 @@ public abstract class PaperhivePlugin {
     @Getter(lombok.AccessLevel.NONE)
     private volatile Logger logger;
 
-    public abstract void onEnable(HiveContext<PluginContext> context);
+    public abstract void onEnable(@NotNull HiveContext<PluginContext> context);
 
     /** Its Hive commands are removed after this. */
     public void onDisable() {}
 
     /** A server it's enabled for is up ({@code RUNNING}). Runs on a Paperhive thread. */
-    public void onServerStart(HiveContext<ServerContext> context) {}
+    public void onServerStart(@NotNull HiveContext<ServerContext> context) {}
 
     /**
      * A key in this plugin's namespace: {@code key("joins")} is {@code <plugin name>:joins}, the same key its server
      * half's {@code key("joins")} gives, so both ends name one channel, service or shared value.
      */
-    public final Namespaced key(String value) {
+    public final @NotNull Namespaced key(@NotNull String value) {
         return Namespaced.forPlugin(pluginDescriptor.getName(), value);
     }
 
     /** Prefixes every message with {@code [<name>] }. */
-    public Logger getLogger() {
+    public @NotNull Logger getLogger() {
         Logger l = logger;
         if (l == null) logger = l = new PluginLogger(this);
         return l;
     }
 
     /** Called by Paperhive once, right after constructing the plugin. */
-    public final synchronized void initialize(PluginManager pluginManager, ClassLoader classLoader, PaperhivePluginDescriptor descriptor) {
+    public final synchronized void initialize(@NotNull PluginManager pluginManager, @NotNull ClassLoader classLoader, @NotNull PaperhivePluginDescriptor descriptor) {
         if (this.pluginDescriptor != null) throw new IllegalStateException("Already initialized");
         this.pluginDescriptor = descriptor;
         this.pluginManager = pluginManager;

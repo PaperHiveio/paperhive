@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.console;
 
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 
@@ -27,14 +28,14 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
  * Unix domain socket {@code paperhive.sock} (local only; on Linux its file permissions decide who may use it).
  * One command per connection: a line in, the reply lines out; {@code attach <name>} keeps the connection for its session.
  */
-final class ControlSocket {
+public final class ControlSocket {
 
-    static final Path PATH = Path.of("paperhive.sock");
+    public static final Path PATH = Path.of("paperhive.sock");
 
     private ControlSocket() {}
 
     /** Answers commands in the background for the rest of the JVM's life. */
-    static void serve(CommandRegistry commands, ServerManager servers) throws IOException {
+    public static void serve(@NotNull CommandRegistry commands, @NotNull ServerManager servers) throws IOException {
         if (Files.exists(PATH)) {
             if (reachable()) throw new IOException("Another Paperhive host already runs in this folder (" + PATH.toAbsolutePath() + ")");
             Files.delete(PATH); // left over from a host that didn't exit cleanly
@@ -137,7 +138,7 @@ final class ControlSocket {
     }
 
     /** Client side: sends {@code command} to the host in this folder and prints its reply. Returns the exit code. */
-    static int send(String command, PrintStream out, PrintStream err) {
+    public static int send(@NotNull String command, @NotNull PrintStream out, @NotNull PrintStream err) {
         try (SocketChannel channel = SocketChannel.open(UnixDomainSocketAddress.of(PATH))) {
             Writer writer = Channels.newWriter(channel, StandardCharsets.UTF_8);
             writer.write(command + "\n");
@@ -158,7 +159,7 @@ final class ControlSocket {
         }
     }
 
-    public static @NotNull Thread createInput(Writer writer, SocketChannel channel) {
+    public static @NotNull Thread createInput(@NotNull Writer writer, @NotNull SocketChannel channel) {
         Thread input = new Thread(() -> {
             try (BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in))) {
                 for (String line; (line = stdin.readLine()) != null; ) {

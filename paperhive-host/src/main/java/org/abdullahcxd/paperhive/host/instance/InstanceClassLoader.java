@@ -61,7 +61,7 @@ public final class InstanceClassLoader extends URLClassLoader {
     }
 
     @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    protected @NotNull Class<?> loadClass(@NotNull String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
             Class<?> c = findLoadedClass(name);
             if (c == null) {
@@ -85,7 +85,7 @@ public final class InstanceClassLoader extends URLClassLoader {
     }
 
     @Override
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
+    protected @NotNull Class<?> findClass(@NotNull String name) throws ClassNotFoundException {
         String path = name.replace('.', '/').concat(".class");
         Source source = classIndex().get(path);
         if (source == null) throw new ClassNotFoundException(name);
@@ -168,13 +168,13 @@ public final class InstanceClassLoader extends URLClassLoader {
     }
 
     @Override
-    public URL getResource(String name) {
+    public @NotNull URL getResource(@NotNull String name) {
         URL url = findResource(name);
         return url != null ? url : getParent().getResource(name);
     }
 
     @Override
-    public @NotNull Enumeration<URL> getResources(String name) throws IOException {
+    public @NotNull Enumeration<URL> getResources(@NotNull String name) throws IOException {
         List<URL> urls = new ArrayList<>(Collections.list(findResources(name)));
         urls.addAll(Collections.list(getParent().getResources(name)));
         return Collections.enumeration(urls);

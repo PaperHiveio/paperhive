@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.downloader.impl;
 
+import org.jetbrains.annotations.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.constants.DirectoryConstants;
 import org.abdullahcxd.paperhive.constants.DownloaderConstants;
@@ -33,17 +34,17 @@ public class PaperMCSoftwareDownloader implements VersionDownloader {
     }
 
     @Override
-    public Path cache() {
+    public @NotNull Path cache() {
         return cache;
     }
 
     @Override
-    public String mirror() {
+    public @NotNull String mirror() {
         return mirror;
     }
 
     @Override
-    public Path fetch(MCSoftware software, MCVersion version) {
+    public @NotNull Path fetch(@NotNull MCSoftware software, @NotNull MCVersion version) {
         // resolveURI validates software/version names, so do it before they touch any Path
         URI indexUri = resolveURI(software, version, "index.json");
         Path cacheVersionDirectory = cache

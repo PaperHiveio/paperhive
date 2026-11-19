@@ -4,7 +4,7 @@ import java.util.Properties
 // Try it locally: ./gradlew publishToMavenLocal (from the root), then see "Gradle plugin" in docs/architecture.md.
 plugins {
     `java-gradle-plugin`
-    `maven-publish`
+    id("paperhive.publishing") // repository and POM, shared with the other Paperhive builds (build-logic)
 }
 
 group = "org.abdullahcxd.paperhive"
@@ -12,7 +12,6 @@ group = "org.abdullahcxd.paperhive"
 version = version.toString().takeIf { it != "unspecified" }
     ?: Properties().apply { file("../gradle.properties").reader().use { load(it) } }.getProperty("version")
 
-java.withSourcesJar()
 
 java.toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }
@@ -38,41 +37,4 @@ tasks.processResources {
     val version = project.version.toString()
     inputs.property("version", version)
     filesMatching("paperhive-gradle.properties") { expand("version" to version) }
-}
-
-// Every Paperhive artifact goes to the releases repository with the same POM. Credentials: the Gradle properties
-// abdullahcxdUsername / abdullahcxdPassword (in CI: ORG_GRADLE_PROJECT_abdullahcxdUsername / ...Password).
-plugins.withId("maven-publish") {
-    extensions.configure<PublishingExtension> {
-        repositories {
-            maven("https://maven.abdullahcxd.org/releases") {
-                name = "abdullahcxd"
-                credentials(PasswordCredentials::class)
-            }
-        }
-        publications.withType<MavenPublication>().configureEach {
-            pom {
-                name.set(project.name)
-                description.set("Paperhive: one JVM, many Paper servers")
-                url.set("https://github.com/paperhiveio/paperhive")
-                licenses {
-                    license {
-                        name.set("MIT License")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("AbdullahCXD")
-                        name.set("Abdullah Saeed")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/paperhiveio/paperhive")
-                    connection.set("scm:git:https://github.com/paperhiveio/paperhive.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/paperhiveio/paperhive.git")
-                }
-            }
-        }
-    }
 }

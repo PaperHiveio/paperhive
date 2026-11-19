@@ -1,6 +1,7 @@
 plugins {
+    id("paperhive.java")
+    id("paperhive.publishing")
     application
-    `maven-publish`
     alias(libs.plugins.shadow)
 }
 
@@ -31,10 +32,6 @@ dependencies {
     runtimeOnly(platform(libs.log4j.bom))
     runtimeOnly(libs.log4j.core)
     runtimeOnly(libs.log4j.slf4j2.impl)
-
-    testImplementation(platform("org.junit:junit-bom:6.0.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 // needed to shut down thread pools a stopped instance leaves behind (see LeftoverThreads)

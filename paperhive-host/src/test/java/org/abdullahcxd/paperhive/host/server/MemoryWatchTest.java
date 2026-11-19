@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.server;
 
 import org.junit.jupiter.api.Test;
 

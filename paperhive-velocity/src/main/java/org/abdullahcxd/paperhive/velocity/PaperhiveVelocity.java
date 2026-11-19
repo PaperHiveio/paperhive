@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.velocity;
 
+import org.jetbrains.annotations.NotNull;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -61,7 +62,7 @@ public final class PaperhiveVelocity {
     }
 
     @Subscribe
-    public void onProxyInitialize(ProxyInitializeEvent event) throws IOException {
+    public void onProxyInitialize(@NotNull ProxyInitializeEvent event) throws IOException {
         Path file = dataDirectory.resolve("config.properties");
         if (Files.notExists(file)) {
             Files.createDirectories(dataDirectory);
@@ -74,17 +75,17 @@ public final class PaperhiveVelocity {
         socket = Path.of(config.getProperty("socket", "paperhive.sock")).toAbsolutePath().normalize();
         sync = new ServerSync(new ServerSync.Proxy() {
             @Override
-            public boolean has(String name) {
+            public boolean has(@NotNull String name) {
                 return proxy.getServer(name).isPresent();
             }
 
             @Override
-            public void register(String name, InetSocketAddress address) {
+            public void register(@NotNull String name, @NotNull InetSocketAddress address) {
                 proxy.registerServer(new ServerInfo(name, new InetSocketAddress(address.getHostString(), address.getPort())));
             }
 
             @Override
-            public void unregister(String name) {
+            public void unregister(@NotNull String name) {
                 proxy.getServer(name).ifPresent(s -> proxy.unregisterServer(s.getServerInfo()));
             }
         }, config.getProperty("host", "127.0.0.1"));

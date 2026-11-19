@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.InputStream;
@@ -41,50 +42,46 @@ public final class HiveIo {
     }
 
     /** The host's real stdout (instances' console echo and host-only output go here). */
-    public static PrintStream hostOut() {
+    public static @NotNull PrintStream hostOut() {
         return hostOut;
     }
 
-    public static PrintStream hostErr() {
+    public static @NotNull PrintStream hostErr() {
         return hostErr;
     }
 
-    // ---- targets of rewritten instance code ----
-
-    public static PrintStream out() {
+    public static @NotNull PrintStream out() {
         InstanceIo io = callerIo();
         return io == null ? System.out : io.out;
     }
 
-    public static PrintStream err() {
+    public static @NotNull PrintStream err() {
         InstanceIo io = callerIo();
         return io == null ? System.err : io.err;
     }
 
-    public static InputStream in() {
+    public static @NotNull InputStream in() {
         InstanceIo io = callerIo();
         return io == null ? System.in : io.in;
     }
 
-    public static void setOut(PrintStream out) {
+    public static void setOut(@NotNull PrintStream out) {
         InstanceIo io = callerIo();
         if (io == null) System.setOut(out);
         else io.out = out;
     }
 
-    public static void setErr(PrintStream err) {
+    public static void setErr(@NotNull PrintStream err) {
         InstanceIo io = callerIo();
         if (io == null) System.setErr(err);
         else io.err = err;
     }
 
-    public static void setIn(InputStream in) {
+    public static void setIn(@NotNull InputStream in) {
         InstanceIo io = callerIo();
         if (io == null) System.setIn(in);
         else io.in = in;
     }
-
-    // ---- routing for JDK code ----
 
     /** The stream JDK code on this thread should write to: its instance's current slot, else the host's. */
     static PrintStream routed(boolean out) {

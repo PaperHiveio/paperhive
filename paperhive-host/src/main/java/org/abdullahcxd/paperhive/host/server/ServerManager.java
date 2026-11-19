@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.server;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -71,11 +71,11 @@ public final class ServerManager {
         return List.copyOf(instances.keySet());
     }
 
-    public synchronized @Nullable ServerInstance instance(String name) {
+    public synchronized @Nullable ServerInstance instance(@NotNull String name) {
         return instances.get(name);
     }
 
-    public synchronized HiveConfig.Server server(String name) {
+    public synchronized HiveConfig.@NotNull Server server(@NotNull String name) {
         return servers.get(name);
     }
 
@@ -94,7 +94,7 @@ public final class ServerManager {
     }
 
     /** @throws HiveConfig.HiveConfigException if the file would become invalid (then nothing changed) */
-    public synchronized HiveConfig.Server create(String name, int port) {
+    public synchronized HiveConfig.@NotNull Server create(@NotNull String name, int port) {
         // the file may also hold edits made since the host started; only the new server is taken from it
         HiveConfig.Server server = HiveConfig.addServer(configFile, name, port).servers().getLast();
         add(server);
@@ -102,7 +102,7 @@ public final class ServerManager {
     }
 
     /** Applies at the server's next start. @throws HiveConfig.HiveConfigException as {@link #create} */
-    public synchronized void set(String name, String key, @Nullable String value) {
+    public synchronized void set(@NotNull String name, @NotNull String key, @Nullable String value) {
         HiveConfig config = HiveConfig.setServerKey(configFile, name, key, value);
         servers.put(name, config.servers().stream().filter(s -> s.name().equals(name)).findFirst().orElseThrow());
     }
@@ -119,7 +119,7 @@ public final class ServerManager {
     }
 
     /** @return false if it couldn't start (logged) or the start guard said no */
-    public synchronized boolean start(String name) {
+    public synchronized boolean start(@NotNull String name) {
         ServerInstance instance = instances.get(name);
         if (instance == null) return false; // deleted meanwhile
         if (!startGuard.test(name)) {
@@ -164,7 +164,7 @@ public final class ServerManager {
     }
 
     /** The console shows only this server's output and sends it what's typed. */
-    public synchronized void attach(ServerInstance target) {
+    public synchronized void attach(@NotNull ServerInstance target) {
         attached = target;
         for (ServerInstance i : instances.values()) i.getConsole().setEcho(i == target);
     }

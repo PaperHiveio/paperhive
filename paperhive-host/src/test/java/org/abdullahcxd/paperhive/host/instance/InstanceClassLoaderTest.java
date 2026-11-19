@@ -1,7 +1,7 @@
 package org.abdullahcxd.paperhive.host.instance;
 
 import org.abdullahcxd.paperhive.api.Paperhive;
-import org.abdullahcxd.paperhive.host.paperclip.PaperclipCache;
+import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
 import org.abdullahcxd.paperhive.plugin.PaperhivePlugin;
 import org.example.isolated.IsolatedCounter;
 import org.junit.jupiter.api.Test;

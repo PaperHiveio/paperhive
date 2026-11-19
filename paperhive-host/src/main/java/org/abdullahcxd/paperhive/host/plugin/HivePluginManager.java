@@ -91,13 +91,13 @@ public final class HivePluginManager implements PluginManager {
         }
     }
 
-    public static boolean isPluginLoader(ClassLoader loader) {
+    public static boolean isPluginLoader(@NotNull ClassLoader loader) {
         return loader instanceof PluginLoader;
     }
 
     /** Every jar in {@code directory} (created if missing); one that fails is logged and skipped. */
     @Override
-    public @NotNull List<PaperhivePlugin> loadPlugins(Path directory) {
+    public @NotNull List<PaperhivePlugin> loadPlugins(@NotNull Path directory) {
         List<PaperhivePlugin> loaded = new ArrayList<>();
         try {
             Files.createDirectories(directory);
@@ -153,7 +153,7 @@ public final class HivePluginManager implements PluginManager {
     }
 
     /** @param commands where their Hive commands go (from now on, also for plugins enabled later) */
-    public synchronized void enableAll(HiveCommandRegistry commands) {
+    public synchronized void enableAll(@NotNull HiveCommandRegistry commands) {
         this.commands = commands;
         for (Loaded l : List.copyOf(plugins.values())) enablePlugin(l.plugin);
     }
@@ -170,12 +170,12 @@ public final class HivePluginManager implements PluginManager {
     }
 
     @Override
-    public void enablePlugin(String name) {
+    public void enablePlugin(@NotNull String name) {
         enablePlugin(require(name));
     }
 
     @Override
-    public synchronized void enablePlugin(PaperhivePlugin plugin) {
+    public synchronized void enablePlugin(@NotNull PaperhivePlugin plugin) {
         Loaded l = loaded(plugin);
         if (l.enabled) return;
         try {
@@ -189,12 +189,12 @@ public final class HivePluginManager implements PluginManager {
     }
 
     @Override
-    public void disablePlugin(String name) {
+    public void disablePlugin(@NotNull String name) {
         disablePlugin(require(name));
     }
 
     @Override
-    public synchronized void disablePlugin(PaperhivePlugin plugin) {
+    public synchronized void disablePlugin(@NotNull PaperhivePlugin plugin) {
         Loaded l = loaded(plugin);
         if (!l.enabled) return;
         l.enabled = false;
@@ -209,7 +209,7 @@ public final class HivePluginManager implements PluginManager {
     }
 
     @Override
-    public synchronized @Nullable PaperhivePlugin findPlugin(String name) {
+    public synchronized @Nullable PaperhivePlugin findPlugin(@NotNull String name) {
         Loaded l = plugins.get(key(name));
         return l == null ? null : l.plugin;
     }
@@ -218,16 +218,16 @@ public final class HivePluginManager implements PluginManager {
         return plugins.values().stream().map(l -> l.plugin).toList();
     }
 
-    public synchronized boolean isEnabled(PaperhivePlugin plugin) {
+    public synchronized boolean isEnabled(@NotNull PaperhivePlugin plugin) {
         return loaded(plugin).enabled;
     }
 
-    public synchronized boolean hasServerHalf(PaperhivePlugin plugin) {
+    public synchronized boolean hasServerHalf(@NotNull PaperhivePlugin plugin) {
         return loaded(plugin).serverHalf();
     }
 
     /** The server halves {@code server} loads: enabled plugins with a {@code server-main} that it doesn't disable. */
-    public synchronized @NotNull List<ServerHalf> serverHalves(HiveConfig.Server server) {
+    public synchronized @NotNull List<ServerHalf> serverHalves(HiveConfig.@NotNull Server server) {
         List<ServerHalf> halves = new ArrayList<>();
         for (Loaded l : plugins.values()) {
             PaperhivePluginDescriptor d = l.plugin.getPluginDescriptor();
@@ -237,7 +237,7 @@ public final class HivePluginManager implements PluginManager {
     }
 
     /** {@code onServerStart} of every enabled plugin that {@code server} doesn't disable, on the event thread. */
-    public synchronized void serverStarted(HiveConfig.@NotNull Server config, HiveServer server) {
+    public synchronized void serverStarted(HiveConfig.@NotNull Server config, @NotNull HiveServer server) {
         ServerContext context = new ServerContext(config.name(), serverIp(server.getRoot()), config.port(), server);
         for (Loaded l : plugins.values()) {
             if (!l.enabled || !enabledFor(config, l)) continue;

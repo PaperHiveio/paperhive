@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
@@ -39,74 +40,74 @@ public final class InstanceHooks {
     }
 
     /** Replaces {@code Runtime.exit}. */
-    public static void runtimeExit(Runtime runtime, int status) {
+    public static void runtimeExit(@NotNull Runtime runtime, int status) {
         caller().handleExit(status, false);
     }
 
     /** Replaces {@code Runtime.halt}: like exit, but without running shutdown hooks. */
-    public static void halt(Runtime runtime, int status) {
+    public static void halt(@NotNull Runtime runtime, int status) {
         caller().handleExit(status, true);
     }
 
     /** Replaces {@code Runtime.addShutdownHook}: the hook runs when this instance exits or is stopped. */
-    public static void addShutdownHook(Runtime runtime, Thread hook) {
+    public static void addShutdownHook(@NotNull Runtime runtime, @NotNull Thread hook) {
         caller().addShutdownHook(hook);
     }
 
     /** Replaces {@code Runtime.removeShutdownHook}. */
-    public static boolean removeShutdownHook(Runtime runtime, Thread hook) {
+    public static boolean removeShutdownHook(@NotNull Runtime runtime, @NotNull Thread hook) {
         return caller().removeShutdownHook(hook);
     }
 
     /** Replaces {@code FileChannel.lock()}: the channel is closed (lock released) when the instance stops. */
-    public static FileLock lock(FileChannel channel) throws IOException {
+    public static @NotNull FileLock lock(@NotNull FileChannel channel) throws IOException {
         return track(channel, channel.lock());
     }
 
-    public static FileLock lock(FileChannel channel, long position, long size, boolean shared) throws IOException {
+    public static @NotNull FileLock lock(@NotNull FileChannel channel, long position, long size, boolean shared) throws IOException {
         return track(channel, channel.lock(position, size, shared));
     }
 
     /** Replaces {@code FileChannel.tryLock()}. */
-    public static FileLock tryLock(FileChannel channel) throws IOException {
+    public static @NotNull FileLock tryLock(@NotNull FileChannel channel) throws IOException {
         return track(channel, channel.tryLock());
     }
 
-    public static FileLock tryLock(FileChannel channel, long position, long size, boolean shared) throws IOException {
+    public static @NotNull FileLock tryLock(@NotNull FileChannel channel, long position, long size, boolean shared) throws IOException {
         return track(channel, channel.tryLock(position, size, shared));
     }
 
     /** Replaces {@code FlightRecorder.addListener}: the listener is removed again when the instance stops. */
-    public static void addFlightRecorderListener(FlightRecorderListener listener) {
+    public static void addFlightRecorderListener(@NotNull FlightRecorderListener listener) {
         ServerInstance instance = caller();
         FlightRecorder.addListener(listener);
         instance.onStop(() -> FlightRecorder.removeListener(listener));
     }
 
     /** Replaces {@code FlightRecorder.addPeriodicEvent}: removed again when the instance stops. */
-    public static void addPeriodicEvent(Class<? extends Event> eventClass, Runnable hook) {
+    public static void addPeriodicEvent(@NotNull Class<? extends Event> eventClass, @NotNull Runnable hook) {
         ServerInstance instance = caller();
         FlightRecorder.addPeriodicEvent(eventClass, hook);
         instance.onStop(() -> FlightRecorder.removePeriodicEvent(hook));
     }
 
     /** Replaces {@code FlightRecorder.register}: unregistered again when the instance stops. */
-    public static void registerEvent(Class<? extends Event> eventClass) {
+    public static void registerEvent(@NotNull Class<? extends Event> eventClass) {
         ServerInstance instance = caller();
         FlightRecorder.register(eventClass);
         instance.onStop(() -> FlightRecorder.unregister(eventClass));
     }
 
     /** Replaces {@code Executors.newSingleThreadExecutor()}: shut down when the instance stops. */
-    public static ExecutorService newSingleThreadExecutor() {
+    public static @NotNull ExecutorService newSingleThreadExecutor() {
         return caller().trackExecutor(Executors.newSingleThreadExecutor());
     }
 
-    public static ExecutorService newSingleThreadExecutor(ThreadFactory threadFactory) {
+    public static @NotNull ExecutorService newSingleThreadExecutor(@NotNull ThreadFactory threadFactory) {
         return caller().trackExecutor(Executors.newSingleThreadExecutor(threadFactory));
     }
 
-    // ---- defineClass: classes defined by the instance's own loaders (plugins) get rewritten too ----
+    // classes defined by the instance's own loaders (Paper's plugin loaders, server halves') are rewritten too
 
     /** {@code ClassLoader.defineClass(String, byte[], int, int, ProtectionDomain)}, or null without --add-opens java.base/java.lang. */
     private static final @Nullable MethodHandle DEFINE_CLASS = defineClassHandle();
@@ -150,31 +151,31 @@ public final class InstanceHooks {
     }
 
     /** Replaces {@code SecureClassLoader.defineClass(String, byte[], int, int, CodeSource)} (used by Paper's plugin loaders). */
-    public static Class<?> defineClass(Object loader, String name, byte[] b, int off, int len, CodeSource cs) {
+    public static @Nullable Class<?> defineClass(@NotNull Object loader, @NotNull String name, byte @NotNull [] b, int off, int len, @Nullable CodeSource cs) {
         ClassLoader cl = (ClassLoader) loader;
         // no SecurityManager, so the domain's permissions don't matter; SecureClassLoader would cache one per location
         return define(cl, name, b, off, len, cs == null ? null : new ProtectionDomain(cs, null, cl, null));
     }
 
     /** Replaces {@code ClassLoader.defineClass(String, byte[], int, int, ProtectionDomain)}. */
-    public static Class<?> defineClass(Object loader, String name, byte[] b, int off, int len, ProtectionDomain pd) {
+    public static @NotNull Class<?> defineClass(@NotNull Object loader, @NotNull String name, byte @NotNull [] b, int off, int len, @NotNull ProtectionDomain pd) {
         return define((ClassLoader) loader, name, b, off, len, pd);
     }
 
     /** Replaces {@code ClassLoader.defineClass(String, byte[], int, int)}. */
-    public static Class<?> defineClass(Object loader, String name, byte[] b, int off, int len) {
+    public static @NotNull Class<?> defineClass(@NotNull Object loader, @NotNull String name, byte @NotNull [] b, int off, int len) {
         return define((ClassLoader) loader, name, b, off, len, null);
     }
 
     /** Replaces {@code ClassLoader.defineClass(String, ByteBuffer, ProtectionDomain)}. */
-    public static Class<?> defineClass(Object loader, String name, ByteBuffer buffer, ProtectionDomain pd) {
+    public static @NotNull Class<?> defineClass(@NotNull Object loader, @NotNull String name, @NotNull ByteBuffer buffer, @NotNull ProtectionDomain pd) {
         byte[] b = new byte[buffer.remaining()];
         buffer.get(b);
         return define((ClassLoader) loader, name, b, 0, b.length, pd);
     }
 
     /** Replaces {@code SecureClassLoader.defineClass(String, ByteBuffer, CodeSource)}. */
-    public static Class<?> defineClass(Object loader, String name, ByteBuffer buffer, CodeSource cs) {
+    public static @NotNull Class<?> defineClass(@NotNull Object loader, @NotNull String name, @NotNull ByteBuffer buffer, @NotNull CodeSource cs) {
         byte[] b = new byte[buffer.remaining()];
         buffer.get(b);
         return defineClass(loader, name, b, 0, b.length, cs);

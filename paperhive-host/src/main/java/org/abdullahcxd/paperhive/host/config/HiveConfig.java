@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.config;
 
+import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
 import org.abdullahcxd.paperhive.constants.DirectoryConstants;
 import org.abdullahcxd.paperhive.constants.DownloaderConstants;
 import org.abdullahcxd.paperhive.downloader.MCSoftware;
@@ -38,7 +39,7 @@ import java.util.regex.Pattern;
  * names the right one. Written with one {@code main} server if missing. Files from an older
  * {@code ConfigurationVersion} are migrated step by step (the original is kept as {@code paperhive.yml.v<N>.bak}).
  */
-public record HiveConfig(MCSoftware software, MCVersion version, Host host, List<Server> servers) {
+public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion version, @NotNull Host host, @NotNull List<Server> servers) {
 
     public static final String FILE_NAME = "paperhive.yml";
     public static final int CONFIGURATION_VERSION = 1;
@@ -99,11 +100,11 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
                          boolean autostart, ServerInstance.RestartPolicy restart, List<String> disabledHivePlugins,
                          List<Path> sharedPlugins) {
 
-        public ServerInstance.Options options() {
+        public ServerInstance.@NotNull Options options() {
             return options(Host.DEFAULT);
         }
 
-        public ServerInstance.Options options(Host host) {
+        public ServerInstance.@NotNull Options options(@NotNull Host host) {
             List<String> all = new ArrayList<>();
             if (ip != null) all.addAll(List.of("--host", ip));
             for (Path dir : sharedPlugins) all.addAll(List.of("--add-plugin-dir", dir.toAbsolutePath().normalize().toString()));
@@ -127,7 +128,7 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
                 DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null);
 
         /** Patched jars: in their own folder, as PaperclipCache prunes every other entry of its folder. */
-        public Path paperclipCache() {
+        public @NotNull Path paperclipCache() {
             return cache.resolve("paperclip");
         }
     }
@@ -150,7 +151,7 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
      * here: nothing is written if the result would be invalid, and the file's comments are kept when the change can be
      * made in its text; otherwise the file is rewritten without them (the old one kept as {@code .bak}).
      */
-    public static @NotNull HiveConfig addServer(@NotNull Path file, String name, int port) {
+    public static @NotNull HiveConfig addServer(@NotNull Path file, @NotNull String name, int port) {
         return edit(file, (node, text) -> {
             ((ArrayNode) node.get("Servers")).addObject().put("Name", name).put("Port", port);
             Matcher items = SERVERS_ITEMS.matcher(text);
@@ -161,7 +162,7 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
     }
 
     /** Removes a server from the file; its folder is left alone. */
-    public static @NotNull HiveConfig removeServer(@NotNull Path file, String name) {
+    public static @NotNull HiveConfig removeServer(@NotNull Path file, @NotNull String name) {
         return edit(file, (node, text) -> {
             ArrayNode list = (ArrayNode) node.get("Servers");
             list.remove(indexOf(list, name, file));
@@ -177,7 +178,7 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
      * Sets one key of a server to {@code value}, read as YAML ({@code 25570}, {@code on-crash}, {@code [a, b]}), or
      * removes the key (back to its default) when {@code value} is null.
      */
-    public static @NotNull HiveConfig setServerKey(@NotNull Path file, String name, String key, @Nullable String value) {
+    public static @NotNull HiveConfig setServerKey(@NotNull Path file, @NotNull String name, @NotNull String key, @Nullable String value) {
         if (key.equals("Name")) throw new HiveConfigException(file, List.of("Name can't be changed; delete the server and create it again"));
         return edit(file, (node, text) -> {
             ArrayNode list = (ArrayNode) node.get("Servers");
@@ -263,8 +264,6 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
         }
     }
 
-    // ---- migration ----
-
     private static ObjectNode migrate(ObjectNode node, Path file) throws IOException {
         JsonNode versionNode = node.get("ConfigurationVersion");
         int from = versionNode == null ? 0 : versionNode.isInt() ? versionNode.intValue() : -1;
@@ -313,8 +312,6 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
         }
         return node;
     }
-
-    // ---- parsing and validation ----
 
     private static HiveConfig parse(ObjectNode node, Path file) {
         List<String> problems = new ArrayList<>();

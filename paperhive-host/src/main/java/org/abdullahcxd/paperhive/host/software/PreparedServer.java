@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software;
 
+import org.jetbrains.annotations.NotNull;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -10,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * While open, the cache entry is marked in use so other hosts sharing the cache won't prune it.
  * Keep it open for as long as any instance runs from it.
  */
-public final class PatchedServer implements AutoCloseable {
+public final class PreparedServer implements AutoCloseable {
 
     private final Path serverJar;
     private final List<Path> libraries;
@@ -18,22 +19,22 @@ public final class PatchedServer implements AutoCloseable {
     private final Runnable release;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public PatchedServer(Path serverJar, List<Path> libraries, String mainClass, Runnable release) {
+    public PreparedServer(Path serverJar, List<Path> libraries, String mainClass, Runnable release) {
         this.serverJar = serverJar;
         this.libraries = List.copyOf(libraries);
         this.mainClass = mainClass;
         this.release = release;
     }
 
-    public Path serverJar() {
+    public @NotNull Path serverJar() {
         return serverJar;
     }
 
-    public List<Path> libraries() {
+    public @NotNull List<Path> libraries() {
         return libraries;
     }
 
-    public String mainClass() {
+    public @NotNull String mainClass() {
         return mainClass;
     }
 

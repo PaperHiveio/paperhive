@@ -41,7 +41,7 @@ final class ServerHalfLoader extends URLClassLoader {
     }
 
     @Override
-    protected Class<?> findClass(@NotNull String name) throws ClassNotFoundException {
+    protected @NotNull Class<?> findClass(@NotNull String name) throws ClassNotFoundException {
         URL url = findResource(name.replace('.', '/') + ".class");
         if (url == null) throw new ClassNotFoundException(name);
         byte[] bytes;
@@ -67,7 +67,7 @@ final class ServerHalfLoader extends URLClassLoader {
     }
 
     @Override
-    protected Class<?> loadClass(@NotNull String name, boolean resolve) throws ClassNotFoundException {
+    protected @NotNull Class<?> loadClass(@NotNull String name, boolean resolve) throws ClassNotFoundException {
         if (shared(name)) return super.loadClass(name, resolve);
         synchronized (getClassLoadingLock(name)) {
             Class<?> c = findLoadedClass(name);

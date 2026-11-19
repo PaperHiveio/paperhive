@@ -30,7 +30,7 @@ public final class ApiGateLoader extends ClassLoader {
     }
 
     @Override
-    protected Class<?> findClass(@NotNull String name) throws ClassNotFoundException {
+    protected @NotNull Class<?> findClass(@NotNull String name) throws ClassNotFoundException {
         // only reached when the platform loader doesn't have it
         if (isShared(name)) return hostLoader.loadClass(name);
         throw new ClassNotFoundException(name);

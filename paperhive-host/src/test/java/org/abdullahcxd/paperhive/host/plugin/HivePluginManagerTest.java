@@ -1,9 +1,9 @@
 package org.abdullahcxd.paperhive.host.plugin;
 
 import org.abdullahcxd.paperhive.api.internal.BridgeHooks.ServerHalf;
-import org.abdullahcxd.paperhive.host.TestHive;
-import org.abdullahcxd.paperhive.host.ServerManager;
-import org.abdullahcxd.paperhive.host.TestServers;
+import org.abdullahcxd.paperhive.host.hive.TestHive;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
+import org.abdullahcxd.paperhive.host.server.TestServers;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
 import org.abdullahcxd.paperhive.host.command.PluginCommand;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;

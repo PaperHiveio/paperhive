@@ -1,6 +1,8 @@
 rootProject.name = "PaperHive"
 
 pluginManagement {
+    // the convention plugins every module applies (paperhive.java, paperhive.library, paperhive.publishing)
+    includeBuild("build-logic")
     // the Gradle plugin for Hive plugin projects, used by test-plugin; its own build so it can be applied here
     includeBuild("paperhive-gradle")
     repositories {

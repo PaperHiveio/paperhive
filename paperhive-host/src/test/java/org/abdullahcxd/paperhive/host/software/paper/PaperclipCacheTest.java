@@ -1,5 +1,6 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software.paper;
 
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -32,13 +33,13 @@ class PaperclipCacheTest {
         Path jar = fakePaperJar("1.0", 0, 0, true);
         Path cache = tmp.resolve("cache");
 
-        try (PatchedServer first = PaperclipCache.prepare(jar, cache)) {
+        try (PreparedServer first = PaperclipCache.prepare(jar, cache)) {
             assertTrue(first.serverJar().endsWith(Path.of("versions", "1.0", "paper-1.0.jar")));
             assertEquals(SERVER_MAIN, first.mainClass());
             assertEquals(2, first.libraries().size());
             assertTrue(first.libraries().stream().allMatch(Files::isRegularFile));
         }
-        try (PatchedServer second = PaperclipCache.prepare(jar, cache)) {
+        try (PreparedServer second = PaperclipCache.prepare(jar, cache)) {
             assertEquals(SERVER_MAIN, second.mainClass());
         }
 
@@ -48,11 +49,11 @@ class PaperclipCacheTest {
     @Test
     void changedJarIsPatchedAndOldEntryPruned() throws IOException {
         Path cache = tmp.resolve("cache");
-        try (PatchedServer ignored = PaperclipCache.prepare(fakePaperJar("1.0", 0, 0, true), cache)) {
+        try (PreparedServer ignored = PaperclipCache.prepare(fakePaperJar("1.0", 0, 0, true), cache)) {
             assertEquals(1, entries(cache).size());
         }
 
-        try (PatchedServer server = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
+        try (PreparedServer server = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
             assertTrue(server.serverJar().endsWith(Path.of("versions", "2.0", "paper-2.0.jar")));
             List<Path> entries = entries(cache);
             assertEquals(1, entries.size(), "old entry should be pruned: " + entries);
@@ -63,13 +64,13 @@ class PaperclipCacheTest {
     @Test
     void entryInUseIsNotPruned() throws IOException {
         Path cache = tmp.resolve("cache");
-        try (PatchedServer old = PaperclipCache.prepare(fakePaperJar("1.0", 0, 0, true), cache);
-             PatchedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
+        try (PreparedServer old = PaperclipCache.prepare(fakePaperJar("1.0", 0, 0, true), cache);
+             PreparedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
             assertEquals(2, entries(cache).size());
             assertTrue(Files.isRegularFile(old.serverJar()));
         }
         // nothing holds 1.0 any more, so the next prepare cleans it up
-        try (PatchedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
+        try (PreparedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
             assertEquals(1, entries(cache).size());
         }
     }
@@ -78,11 +79,11 @@ class PaperclipCacheTest {
     void sameEntryCanBeHeldTwiceInOneJvm() throws IOException {
         Path jar = fakePaperJar("1.0", 0, 0, true);
         Path cache = tmp.resolve("cache");
-        PatchedServer a = PaperclipCache.prepare(jar, cache);
-        PatchedServer b = PaperclipCache.prepare(jar, cache);
+        PreparedServer a = PaperclipCache.prepare(jar, cache);
+        PreparedServer b = PaperclipCache.prepare(jar, cache);
         a.close();
         a.close(); // idempotent: must not drop b's hold
-        try (PatchedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
+        try (PreparedServer ignored = PaperclipCache.prepare(fakePaperJar("2.0", 0, 0, true), cache)) {
             assertEquals(2, entries(cache).size(), "1.0 is still held by b");
         }
         b.close();

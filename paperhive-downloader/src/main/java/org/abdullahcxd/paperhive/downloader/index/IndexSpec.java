@@ -1,4 +1,7 @@
 package org.abdullahcxd.paperhive.downloader.index;
 
-public record IndexSpec(String sha256, String file) {
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+public record IndexSpec(@Nullable String sha256, @Nullable String file) {
 }

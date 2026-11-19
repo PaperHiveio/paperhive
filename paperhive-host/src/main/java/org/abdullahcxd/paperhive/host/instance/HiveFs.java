@@ -27,60 +27,60 @@ public final class HiveFs {
     private HiveFs() {}
 
     /** {@code new File(path)}, {@code new FileInputStream(path)}, ...: the path argument. */
-    public static String resolve(String path) {
+    public static @NotNull String resolve(@Nullable String path) {
         if (path == null || new File(path).isAbsolute()) return path;
         Path root = root();
         return root == null ? path : new File(root.toFile(), path).getPath();
     }
 
     /** {@code new File(parent, child)} becomes {@code new File(join(parent, child))}. */
-    public static String join(String parent, String child) {
+    public static @NotNull String join(@NotNull String parent, @NotNull String child) {
         return resolve(new File(parent, child).getPath());
     }
 
     /** {@code new File(parent, child)} becomes {@code new File(join(parent, child))}. */
-    public static String join(File parent, String child) {
+    public static @NotNull String join(@NotNull File parent, @NotNull String child) {
         return resolve(new File(parent, child).getPath());
     }
 
     /** Replaces {@code Path.of(first, more...)} and {@code Paths.get(first, more...)}. */
-    public static Path path(String first, String... more) {
+    public static @NotNull Path path(@NotNull String first, String @NotNull ... more) {
         return absolute(FileSystems.getDefault().getPath(first, more));
     }
 
     /** Replaces {@code FileSystem.getPath(first, more...)}; only the default file system is the JVM's disk. */
-    public static Path getPath(FileSystem fs, String first, String... more) {
+    public static @NotNull Path getPath(@NotNull FileSystem fs, @NotNull String first, String @NotNull ... more) {
         Path path = fs.getPath(first, more);
         return fs == FileSystems.getDefault() ? absolute(path) : path;
     }
 
     /** {@code Files.*} calls ({@link FilesMirror}): a relative path argument, made absolute; null stays null. */
-    public static Path file(Path path) {
+    public static @Nullable Path file(@Nullable Path path) {
         return path == null ? null : absolute(path);
     }
 
-    public static Path toAbsolutePath(Path path) {
+    public static @NotNull Path toAbsolutePath(@NotNull Path path) {
         return absolute(path).toAbsolutePath();
     }
 
-    public static String getAbsolutePath(File file) {
+    public static @NotNull String getAbsolutePath(@NotNull File file) {
         return absolute(file).getAbsolutePath();
     }
 
-    public static File getAbsoluteFile(File file) {
+    public static @NotNull File getAbsoluteFile(@NotNull File file) {
         return absolute(file).getAbsoluteFile();
     }
 
-    public static String getCanonicalPath(File file) throws IOException {
+    public static @NotNull String getCanonicalPath(@NotNull File file) throws IOException {
         return absolute(file).getCanonicalPath();
     }
 
-    public static File getCanonicalFile(File file) throws IOException {
+    public static @NotNull File getCanonicalFile(@NotNull File file) throws IOException {
         return absolute(file).getCanonicalFile();
     }
 
     /** Replaces {@code System.getProperty(key)}: {@code user.dir} is the instance root. */
-    public static String getProperty(String key) {
+    public static @NotNull String getProperty(@NotNull String key) {
         if ("user.dir".equals(key)) {
             Path root = root();
             if (root != null) return root.toString();
@@ -89,13 +89,13 @@ public final class HiveFs {
     }
 
     /** Replaces {@code System.getProperty(key, def)}. */
-    public static String getProperty(String key, String def) {
+    public static @NotNull String getProperty(@NotNull String key, @NotNull String def) {
         String value = getProperty(key);
         return value != null ? value : def;
     }
 
     /** Replaces {@code ProcessBuilder.start()}: a child process without a directory starts in the instance root. */
-    public static Process start(ProcessBuilder builder) throws IOException {
+    public static @NotNull Process start(@NotNull ProcessBuilder builder) throws IOException {
         if (builder.directory() == null) {
             Path root = root();
             if (root != null) builder.directory(root.toFile());
@@ -104,20 +104,20 @@ public final class HiveFs {
     }
 
     @SuppressWarnings("deprecation")
-    public static Process exec(Runtime runtime, String command) throws IOException {
+    public static @NotNull Process exec(@NotNull Runtime runtime, @NotNull String command) throws IOException {
         return runtime.exec(command, null, rootFile());
     }
 
     @SuppressWarnings("deprecation")
-    public static Process exec(Runtime runtime, String command, String[] env) throws IOException {
+    public static @NotNull Process exec(@NotNull Runtime runtime, @NotNull String command, String @NotNull [] env) throws IOException {
         return runtime.exec(command, env, rootFile());
     }
 
-    public static Process exec(Runtime runtime, String[] command) throws IOException {
+    public static @NotNull Process exec(@NotNull Runtime runtime, String @NotNull [] command) throws IOException {
         return runtime.exec(command, null, rootFile());
     }
 
-    public static Process exec(Runtime runtime, String[] command, String[] env) throws IOException {
+    public static @NotNull Process exec(@NotNull Runtime runtime, String @NotNull [] command, String @NotNull [] env) throws IOException {
         return runtime.exec(command, env, rootFile());
     }
 

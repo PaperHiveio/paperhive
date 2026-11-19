@@ -2,7 +2,7 @@ package org.abdullahcxd.paperhive.host.command;
 
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.api.HiveServerStats;
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandRegistry;
@@ -44,7 +44,7 @@ public final class CommandRegistry implements HiveCommandRegistry {
      *
      * @param stats a running server's load (null if unknown), for {@code list} and {@code status}
      */
-    public static @NotNull CommandRegistry withBuiltins(ServerManager servers, Function<String, @Nullable HiveServerStats> stats) {
+    public static @NotNull CommandRegistry withBuiltins(@NotNull ServerManager servers, Function<String, @Nullable HiveServerStats> stats) {
         CommandRegistry registry = new CommandRegistry(servers);
         for (HiveCommand command : List.of(new HelpCommand(registry), new ListCommand(servers, stats), new StatusCommand(servers, stats),
                 new CreateCommand(servers), new SetCommand(servers), new DeleteCommand(servers), new StartCommand(servers),
@@ -82,7 +82,7 @@ public final class CommandRegistry implements HiveCommandRegistry {
     }
 
     /** Runs a typed line (see the class comment); everything it has to say goes to {@code sender}. */
-    public void execute(HiveCommandSender sender, String line) {
+    public void execute(@NotNull HiveCommandSender sender, @NotNull String line) {
         String stripped = stripHive(line);
         List<String> words = words(stripped);
         if (words.isEmpty()) return;
@@ -109,7 +109,7 @@ public final class CommandRegistry implements HiveCommandRegistry {
     }
 
     /** Candidates for the last word of {@code line} (which may be empty, when completing a new word). */
-    public List<String> complete(HiveCommandSender sender, String line) {
+    public @NotNull List<String> complete(@NotNull HiveCommandSender sender, @NotNull String line) {
         List<String> words = new ArrayList<>(words(line));
         if (line.isEmpty() || Character.isWhitespace(line.charAt(line.length() - 1))) words.add("");
         if (words.size() > 1 && words.getFirst().equals("hive")) words.removeFirst();

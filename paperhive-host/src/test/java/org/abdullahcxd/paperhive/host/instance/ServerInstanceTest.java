@@ -1,6 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.example.fakeserver.FakeServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -310,7 +310,7 @@ class ServerInstanceTest {
     }
 
     private ServerInstance instance(String name, ServerInstance.Options options) throws IOException {
-        PatchedServer server = new PatchedServer(fakeServerJar(), List.of(), FakeServer.class.getName(), () -> {});
+        PreparedServer server = new PreparedServer(fakeServerJar(), List.of(), FakeServer.class.getName(), () -> {});
         return new ServerInstance(name, tmp.resolve("root-" + name), server, gate, options);
     }
 

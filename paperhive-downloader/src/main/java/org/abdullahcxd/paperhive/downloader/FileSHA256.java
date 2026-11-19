@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.downloader;
 
+import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,7 +13,7 @@ public final class FileSHA256 {
 
     private FileSHA256() {}
 
-    public static String sha256(Path file) throws IOException {
+    public static @NotNull String sha256(@NotNull Path file) throws IOException {
         try (InputStream in = Files.newInputStream(file)) {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] buf = new byte[8192];

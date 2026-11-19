@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -25,37 +26,37 @@ public final class HiveJul {
 
     private HiveJul() {}
 
-    public static Logger getLogger(String name) {
+    public static @NotNull Logger getLogger(@NotNull String name) {
         Namespace ns = callerNamespace();
         return ns == null ? Logger.getLogger(name) : ns.getOrCreate(name);
     }
 
-    public static Logger getLogger(String name, String resourceBundleName) {
+    public static @NotNull Logger getLogger(@NotNull String name, @NotNull String resourceBundleName) {
         Namespace ns = callerNamespace();
         return ns == null ? Logger.getLogger(name, resourceBundleName) : ns.getOrCreate(name);
     }
 
-    public static Logger getGlobal() {
+    public static @NotNull Logger getGlobal() {
         Namespace ns = callerNamespace();
         return ns == null ? Logger.getGlobal() : ns.getOrCreate(Logger.GLOBAL_LOGGER_NAME);
     }
 
-    public static @Nullable Logger getLogger(LogManager manager, String name) {
+    public static @Nullable Logger getLogger(@NotNull LogManager manager, @NotNull String name) {
         Namespace ns = callerNamespace();
         return ns == null ? manager.getLogger(name) : ns.get(name);
     }
 
-    public static boolean addLogger(LogManager manager, Logger logger) {
+    public static boolean addLogger(@NotNull LogManager manager, @NotNull Logger logger) {
         Namespace ns = callerNamespace();
         return ns == null ? manager.addLogger(logger) : ns.add(logger);
     }
 
-    public static Enumeration<String> getLoggerNames(LogManager manager) {
+    public static @NotNull Enumeration<String> getLoggerNames(@NotNull LogManager manager) {
         Namespace ns = callerNamespace();
         return ns == null ? manager.getLoggerNames() : ns.names();
     }
 
-    public static void reset(LogManager manager) {
+    public static void reset(@NotNull LogManager manager) {
         Namespace ns = callerNamespace();
         if (ns == null) manager.reset();
         else ns.reset();
@@ -86,7 +87,7 @@ public final class HiveJul {
         }
 
         @Override
-        public void publish(LogRecord record) {
+        public void publish(@NotNull LogRecord record) {
             ServerInstance instance = ServerInstance.ofThread(Thread.currentThread());
             Namespace ns = instance == null ? null : instance.julNamespace();
             if (ns != null) {

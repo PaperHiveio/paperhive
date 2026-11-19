@@ -1,10 +1,11 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.console;
 
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,7 +28,7 @@ class ControlSocketTest {
     @Test
     void clientRunsCommandsThroughTheSocket() throws Exception {
         Path file = tmp.resolve(HiveConfig.FILE_NAME);
-        PatchedServer server = new PatchedServer(tmp.resolve("none.jar"), List.of(), "none.Main", () -> {});
+        PreparedServer server = new PreparedServer(tmp.resolve("none.jar"), List.of(), "none.Main", () -> {});
         ApiGateLoader gate = new ApiGateLoader(getClass().getClassLoader());
         ServerManager servers = new ServerManager(file, HiveConfig.load(file), List.of(), s -> List.of(),
                 s -> new ServerInstance(s.name(), tmp.resolve(s.root()), server, gate, s.options()));

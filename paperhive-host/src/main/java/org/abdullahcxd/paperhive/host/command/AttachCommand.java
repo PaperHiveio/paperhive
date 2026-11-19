@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host.command;
 
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.console.ControlSocket;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +14,7 @@ final class AttachCommand extends ServerCommand {
     }
 
     @Override
-    protected void execute(@NotNull HiveCommandSender sender, ServerInstance instance) {
+    protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         if (!sender.isConsole()) {
             sender.sendMessage("attach only works on the host console or as `hive attach <name>` on its own");
             return;

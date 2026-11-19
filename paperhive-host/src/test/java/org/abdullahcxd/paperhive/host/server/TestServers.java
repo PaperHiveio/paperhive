@@ -1,9 +1,9 @@
-package org.abdullahcxd.paperhive.host;
+package org.abdullahcxd.paperhive.host.server;
 
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.paperclip.PatchedServer;
+import org.abdullahcxd.paperhive.host.software.PreparedServer;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -16,7 +16,7 @@ public final class TestServers {
 
     public static ServerManager create(Path dir, Consumer<ServerInstance> onCreate) {
         Path file = dir.resolve(HiveConfig.FILE_NAME);
-        PatchedServer server = new PatchedServer(dir.resolve("none.jar"), List.of(), "none.Main", () -> {});
+        PreparedServer server = new PreparedServer(dir.resolve("none.jar"), List.of(), "none.Main", () -> {});
         ApiGateLoader gate = new ApiGateLoader(TestServers.class.getClassLoader());
         return new ServerManager(file, HiveConfig.load(file), List.of(), s -> List.of(), s -> {
             ServerInstance instance = new ServerInstance(s.name(), dir.resolve(s.root()), server, gate, s.options());

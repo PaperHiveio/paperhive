@@ -1,4 +1,4 @@
-package org.abdullahcxd.paperhive.host.paperclip;
+package org.abdullahcxd.paperhive.host.software.paper;
 
 public class PaperclipException extends RuntimeException {
 

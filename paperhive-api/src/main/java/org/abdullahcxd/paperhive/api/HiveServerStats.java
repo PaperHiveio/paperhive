@@ -1,5 +1,7 @@
 package org.abdullahcxd.paperhive.api;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * A running server's load, read when asked.
  *

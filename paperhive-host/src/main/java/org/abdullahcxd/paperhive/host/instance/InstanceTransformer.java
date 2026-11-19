@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -116,18 +117,18 @@ final class InstanceTransformer {
         boolean[] changed = {false};
         reader.accept(new ClassVisitor(Opcodes.ASM9, writer) {
             @Override
-            public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+            public @Nullable MethodVisitor visitMethod(int access, @NotNull String name, @NotNull String desc, @NotNull String signature, String @NotNull [] exceptions) {
                 return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, desc, signature, exceptions)) {
                     // method references (Executors::newSingleThreadExecutor, FlightRecorder::register) are handles, not calls
                     @Override
-                    public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... args) {
+                    public void visitInvokeDynamicInsn(@NotNull String name, @NotNull String desc, @NotNull Handle bsm, Object @NotNull ... args) {
                         Object[] mapped = args.clone();
                         for (int i = 0; i < mapped.length; i++) if (mapped[i] instanceof Handle h) mapped[i] = redirectHandle(h);
                         super.visitInvokeDynamicInsn(name, desc, bsm, mapped);
                     }
 
                     @Override
-                    public void visitLdcInsn(Object value) {
+                    public void visitLdcInsn(@NotNull Object value) {
                         super.visitLdcInsn(value instanceof Handle h ? redirectHandle(h) : value);
                     }
 
@@ -146,7 +147,7 @@ final class InstanceTransformer {
                     }
 
                     @Override
-                    public void visitFieldInsn(int opcode, String owner, String name, String desc) {
+                    public void visitFieldInsn(int opcode, @NotNull String owner, @NotNull String name, @NotNull String desc) {
                         if (opcode == Opcodes.GETSTATIC && owner.equals("java/lang/System")
                                 && ((name.equals("out") || name.equals("err")) && desc.equals("Ljava/io/PrintStream;")
                                 || name.equals("in") && desc.equals("Ljava/io/InputStream;"))) {
@@ -158,7 +159,7 @@ final class InstanceTransformer {
                     }
 
                     @Override
-                    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+                    public void visitMethodInsn(int opcode, @NotNull String owner, @NotNull String name, @NotNull String desc, boolean itf) {
                         if (opcode == Opcodes.INVOKESPECIAL && name.equals("<init>") && rewritePathConstructor(owner, desc)) {
                             changed[0] = true;
                             return;

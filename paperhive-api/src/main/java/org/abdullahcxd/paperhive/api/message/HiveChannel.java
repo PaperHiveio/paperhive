@@ -62,7 +62,7 @@ public final class HiveChannel<T> {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         return o instanceof HiveChannel<?> c && c.key.equals(key);
     }
 
@@ -72,7 +72,7 @@ public final class HiveChannel<T> {
     }
 
     @Override
-    public String toString() {
+    public @NotNull String toString() {
         return "HiveChannel[" + key + "]";
     }
 

@@ -1,4 +1,8 @@
 // A Paper plugin, loaded by each server (Paperhive passes it with --add-plugin); see "Bukkit bridge" in docs/architecture.md
+plugins {
+    id("paperhive.library")
+}
+
 dependencies {
     compileOnly(libs.paper.api)
     // shared from the host through ApiGateLoader at runtime

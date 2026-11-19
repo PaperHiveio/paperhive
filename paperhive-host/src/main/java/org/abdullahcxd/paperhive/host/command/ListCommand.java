@@ -1,7 +1,7 @@
 package org.abdullahcxd.paperhive.host.command;
 
 import org.abdullahcxd.paperhive.api.HiveServerStats;
-import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
