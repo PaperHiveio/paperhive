@@ -83,6 +83,8 @@ class HivePluginLeakIT {
 
                 assertTrue(instance.stop(java.time.Duration.ofSeconds(90)), "round " + round + " had to be forced");
                 assertNull(handle.getStats(), "no stats once stopped");
+                // its Log4j must have let go of the log file right away (Windows can't rotate or delete an open one)
+                Files.delete(instance.getRoot().resolve("logs").resolve("latest.log"));
                 drain(hive);
                 Leaks.gc();
                 System.out.printf("[HivePluginLeakIT] round %d: %s, loaders alive %d%n", round, stats,

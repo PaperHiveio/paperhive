@@ -258,7 +258,10 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   launch flag), and lowering it affects every soft cache in the JVM; add `-XX:SoftRefLRUPolicyMSPerMB=0` to the
   launch flags only if restarting servers often on a small heap. The leak tests run with it, to tell lingering from leaking.
 
-## Late relative paths and JDBC drivers (M3/M4 follow-ups)
+## Late relative paths, JDBC drivers and log files (M3/M4 follow-ups)
+- **Log files**: Paper leaves its Log4j to JVM exit, so a stopped instance's appenders would keep `logs/latest.log`
+  open until a GC; Windows then can't rotate it at the next start. `InstanceLog4j` shuts down the instance loader's
+  Log4j context after the instance stops (only if it ever loaded Log4j).
 - **`Files.*`**: a relative `Path` the JDK derives (`getFileName()`, `relativize`) isn't made absolute when it's
   created, so opening it would resolve against the JVM cwd. `FilesMirror` generates `HiveFiles` at startup: one static
   method per `java.nio.file.Files` method taking a `Path` (from `Files` itself, so none is missed on another JDK),

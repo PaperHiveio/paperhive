@@ -155,6 +155,11 @@ public final class InstanceClassLoader extends URLClassLoader {
     }
 
     /** Defines a host-generated class inside this loader, so it acts as instance code (see {@link JdbcDrivers}). */
+    /** Whether this loader itself has loaded {@code name} (without loading it). */
+    boolean hasLoaded(String name) {
+        return findLoadedClass(name) != null;
+    }
+
     Class<?> defineHelper(String name, byte[] bytes) {
         synchronized (getClassLoadingLock(name)) {
             Class<?> existing = findLoadedClass(name);

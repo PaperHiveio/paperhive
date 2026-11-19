@@ -543,6 +543,7 @@ public final class ServerInstance {
             innerLoaders = new ArrayList<>(definingLoaders);
             definingLoaders.clear();
         }
+        InstanceLog4j.shutdown(loader); // closes logs/latest.log now, not at some later GC
         cleanupJvmGlobals(loader, innerLoaders);
         closeQuietly(loader);
         sinks.out().close(); // emits a last line that had no line break
