@@ -69,6 +69,10 @@ class PaperInstanceIT {
                 // a stopped loader can take a few GC cycles to go (finalizers, cleaners); count once it has, as the
                 // final assertCollected allows, so a slow collection isn't mistaken for growth
                 for (int g = 0; g < 50 && loaders.get(i).get() != null; g++) gc();
+                if (loaders.get(i).get() != null) { // only a JDK soft cache can still hold it (see Leaks.assertCollected)
+                    Leaks.clearSoftReferences();
+                    gc();
+                }
                 classes[i] = ManagementFactory.getClassLoadingMXBean().getLoadedClassCount();
                 // and its classes are unloaded a cycle or so after the loader is cleared
                 for (int g = 0; g < 10 && i > 1 && classes[i] - classes[1] >= 2_000; g++) {

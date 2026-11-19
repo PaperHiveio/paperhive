@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -22,9 +24,19 @@ public final class Leaks {
         }
     }
 
-    /** Fails with a heap dump (to find what still holds it) if {@code ref} isn't collected. */
+    /**
+     * Fails with a heap dump (to find what still holds it) if {@code ref} isn't collected. Something only softly
+     * reachable isn't a leak: the JDK keeps soft caches that can point at a stopped server's classes, e.g. the one-entry
+     * {@code asTypeSoftCache} of {@code ObjectMethods.OBJECTS_EQUALS} (every record's {@code equals}) holding a
+     * Minecraft record type, until the next server replaces it or the heap gets tight (see "Soft references" in
+     * docs/architecture.md). So before failing, every soft reference is cleared, the one way the JVM guarantees it.
+     */
     public static void assertCollected(WeakReference<?> ref, String what) throws InterruptedException {
         for (int i = 0; i < 50 && ref.get() != null; i++) gc();
+        if (ref.get() != null) {
+            clearSoftReferences();
+            for (int i = 0; i < 5 && ref.get() != null; i++) gc();
+        }
         if (ref.get() == null) return;
         Path dump = Path.of("leak-" + System.currentTimeMillis() + ".hprof").toAbsolutePath();
         try {
@@ -33,6 +45,17 @@ public final class Leaks {
             dump = null;
         }
         fail(what + " is still reachable after stop" + (dump != null ? "; heap dump: " + dump : ""));
+    }
+
+    /** The JVM clears every soft reference before it throws OutOfMemoryError, so run into one on purpose. */
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
+    public static void clearSoftReferences() {
+        List<long[]> filler = new ArrayList<>();
+        try {
+            while (true) filler.add(new long[8 * 1024 * 1024]); // 64 MB at a time
+        } catch (OutOfMemoryError expected) {
+            filler.clear();
+        }
     }
 
 }

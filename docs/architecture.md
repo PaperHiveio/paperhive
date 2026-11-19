@@ -276,7 +276,10 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   handle `asType` caches) until the heap gets tight; the JVM clears soft references before throwing an OOM, so this
   is memory held longer, not a leak. Decided: leave it. `SoftRefLRUPolicyMSPerMB` can't be changed at runtime (a
   launch flag), and lowering it affects every soft cache in the JVM; add `-XX:SoftRefLRUPolicyMSPerMB=0` to the
-  launch flags only if restarting servers often on a small heap. The leak tests run with it, to tell lingering from leaking.
+  launch flags only if restarting servers often on a small heap. The leak tests run with it, to tell lingering from leaking,
+  and clear every soft reference before calling a loader leaked. A seen case: `ObjectMethods.OBJECTS_EQUALS` (the JDK
+  handle behind every record's `equals`) caches one `asType` adaptation softly; the last server to compare a
+  Minecraft record leaves its class (and loader) in it until the next server replaces it or the heap gets tight.
 
 ## Late relative paths, JDBC drivers and log files (M3/M4 follow-ups)
 - **Log files**: Paper leaves its Log4j to JVM exit, so a stopped instance's appenders would keep `logs/latest.log`
