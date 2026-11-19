@@ -25,7 +25,8 @@ Useful tasks:
 | `./gradlew :paperhive-host:shadowJar` | Build the host jar (`paperhive-host/build/libs/paperhive-<version>.jar`) |
 | `./gradlew publishToMavenLocal`       | Publish the SDK, host and Gradle plugin to `~/.m2` for plugin projects |
 
-The tests against a real Paper server (`PaperInstanceIT`, `HivePluginLeakIT`) are opt-in; [docs/upgrading.md](docs/upgrading.md)
+The tests against a real Paper server (`PaperInstanceIT`, `HivePluginLeakIT`) are opt-in locally and run in CI by the
+`paper-it` workflow; [docs/upgrading.md](docs/upgrading.md)
 shows how to run them. Run them when you touch class loading, transforms, instance start/stop or the bridge.
 
 ## Pull requests

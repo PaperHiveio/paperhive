@@ -27,6 +27,7 @@ public final class ServerManager {
     /** How long a stop waits for the server before giving up on it ({@code Host.StopTimeout}). */
     @Getter
     private final Duration stopTimeout;
+    private final @Nullable Path velocitySecret;
 
     @Getter
     private final Path configFile;
@@ -52,6 +53,7 @@ public final class ServerManager {
         this.userArgs = List.copyOf(userArgs);
         this.extraArgs = extraArgs;
         this.stopTimeout = config.host().stopTimeout();
+        this.velocitySecret = config.host().velocitySecret();
         for (HiveConfig.Server server : config.servers()) add(server);
     }
 
@@ -132,6 +134,7 @@ public final class ServerManager {
         }
         try {
             for (Path dir : server.sharedPlugins()) java.nio.file.Files.createDirectories(dir); // Paper skips a missing one
+            if (velocitySecret != null) VelocityForwarding.apply(instance.getRoot(), velocitySecret);
             List<String> args = new ArrayList<>(userArgs.isEmpty() ? instance.serverArgs() : userArgs);
             args.addAll(extraArgs.apply(server));
             instance.start(args);

@@ -41,7 +41,7 @@ public final class FakeServer {
     private static volatile boolean running = true;
 
     /** Written with relative paths in "files" mode; each must land in the instance root. */
-    public static final String[] RELATIVE_FILES = {"file.txt", "sub/child.txt", "path-of.txt", "paths-get.txt",
+    public static final String[] RELATIVE_FILES = {"file.txt", "sub/child.txt", "path-of.txt", "paths-get.txt", "derived.txt",
             "fs-get-path.txt", "fos.txt", "fos-append.txt", "raf.txt", "writer.txt", "user-dir.txt",
             "absolute-empty.txt", "to-absolute.txt"};
 
@@ -202,6 +202,8 @@ public final class FakeServer {
         }
         Files.writeString(Path.of("user-dir.txt"), System.getProperty("user.dir"));
         Files.writeString(Path.of("absolute-empty.txt"), new File("").getAbsolutePath());
+        // a relative Path the JDK derives (getFileName), opened straight through Files
+        Files.writeString(Path.of("derived.txt").getFileName(), "x");
         // a relative Path the JDK made, not created through a rewritten call
         Path relative = Path.of("a").getFileSystem().getPath("x").getFileName();
         Files.writeString(Path.of("to-absolute.txt"), relative.toAbsolutePath().toString());

@@ -50,20 +50,30 @@ try = ["lobby"]   # "lobby" is registered by the plugin while it runs
 
 ## Forwarding player info
 
-Velocity's modern forwarding has to be enabled on each Paper server, as usual:
+With Velocity's **modern forwarding**, the proxy tells each server who a player really is. Paperhive sets it up on
+every server for you:
 
-1. In Velocity: `player-info-forwarding-mode = "modern"`, and note the secret in `forwarding.secret`.
-2. In each server's `config/paper-global.yml`:
+1. In Velocity's `velocity.toml`: `player-info-forwarding-mode = "modern"`. Velocity keeps the secret in its
+   `forwarding.secret` file.
+2. In `paperhive.yml`, point Paperhive at that file:
 
    ```yaml
-   proxies:
-     velocity:
-       enabled: true
-       online-mode: true
-       secret: "<the secret>"
+   Host:
+     VelocitySecret: /srv/velocity/forwarding.secret
    ```
 
-3. In each server's `server.properties`: `online-mode=false`.
+3. Restart Paperhive. Before each server starts, Paperhive writes `proxies.velocity` (enabled, online-mode and the
+   secret) into its `config/paper-global.yml` and sets `online-mode=false` in its `server.properties`. Everything else
+   in those files is kept.
+
+If the secret file is missing or empty, the server doesn't start and Paperhive says why: without forwarding, the proxy
+couldn't log players in. When you rotate Velocity's secret, restart the servers to pick it up.
+
+::: callout info "Doing it by hand"
+Without `VelocitySecret`, set it up per server as Velocity's docs describe: `proxies.velocity` in
+`config/paper-global.yml` (`enabled: true`, `online-mode: true`, `secret: "<the secret>"`) and `online-mode=false` in
+`server.properties`.
+:::
 
 ::: callout tip
 Bind the servers to `127.0.0.1` (`IP: 127.0.0.1` in `paperhive.yml`) so players can only reach them through the proxy.

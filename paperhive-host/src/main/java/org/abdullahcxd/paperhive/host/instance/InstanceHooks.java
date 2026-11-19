@@ -122,6 +122,28 @@ public final class InstanceHooks {
         }
     }
 
+    /**
+     * Defines {@code bytes} as is (not rewritten) in {@code loader}, or returns the class if it already defined it; null
+     * when classes can't be defined in other loaders (no --add-opens java.base/java.lang).
+     */
+    static @Nullable Class<?> defineHelperIn(ClassLoader loader, String name, byte[] bytes) {
+        if (DEFINE_CLASS == null) return null;
+        try {
+            return (Class<?>) DEFINE_CLASS.invokeExact(loader, name, bytes, 0, bytes.length, (ProtectionDomain) null);
+        } catch (LinkageError alreadyDefined) {
+            try {
+                Class<?> existing = Class.forName(name, false, loader);
+                return existing.getClassLoader() == loader ? existing : null;
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new IllegalStateException("defineClass failed for " + name, t);
+        }
+    }
+
     /** Whether {@link InstanceTransformer} may rewrite {@code defineClass} calls (it must not if they can't be carried out). */
     static boolean canDefineClasses() {
         return DEFINE_CLASS != null;
@@ -161,6 +183,8 @@ public final class InstanceHooks {
     private static Class<?> define(ClassLoader loader, String name, byte[] b, int off, int len, @Nullable ProtectionDomain pd) {
         byte[] bytes = off == 0 && len == b.length ? b : Arrays.copyOfRange(b, off, off + len);
         bytes = InstanceTransformer.transform(bytes);
+        ServerInstance instance = instanceOf(loader);
+        if (instance != null && !(loader instanceof InstanceClassLoader)) instance.trackDefiningLoader(loader);
         try {
             return (Class<?>) DEFINE_CLASS.invokeExact(loader, name, bytes, 0, bytes.length, pd);
         } catch (RuntimeException | Error e) {

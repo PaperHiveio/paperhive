@@ -1,0 +1,89 @@
+# The real-Paper tests (PaperInstanceIT, HivePluginLeakIT): boot, restart and stop real Paper servers in one JVM,
+# checking isolation and that nothing leaks across 10 restarts. Slow (~6 min), so not on every pull request.
+# Runs on Linux and Windows; the Linux "native" variant lets Paper use Netty's epoll transport instead of the NIO
+# Paperhive picks by default (informational: it may fail without that being a regression).
+# By running this, the EULA flag below accepts the Minecraft EULA for these throwaway test servers.
+name: paper-it
+
+on:
+  push:
+    branches: [main, development]
+    paths:
+      - 'paperhive-host/**'
+      - 'paperhive-bridge/**'
+      - 'paperhive-api/**'
+      - 'paperhive-plugin/**'
+      - 'test-plugin/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - '.github/workflows/paper-it.yml'
+  schedule:
+    - cron: '41 3 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # the Paper version the tests run against: Paperhive's supported one (see docs/upgrading.md when upgrading)
+  PAPER_VERSION: '1.21.11'
+  MIRROR: https://cdn.abdullahcxd.org/files/paperhive/versions
+
+jobs:
+  paper:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, transport: nio }
+          - { os: windows-latest, transport: nio }
+          - { os: ubuntu-latest, transport: native }
+    name: paper (${{ matrix.os }}, ${{ matrix.transport }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.transport == 'native' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Download Paper from the mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          py=$(command -v python3 || command -v python)
+          dir="$RUNNER_TEMP/paper"
+          mkdir -p "$dir"
+          curl -fsSL "$MIRROR/papermc/$PAPER_VERSION/index.json" -o "$dir/index.json"
+          read -r file sha < <("$py" -c "import json,sys; i=json.load(open(sys.argv[1])); print(i['file'], i['sha256'])" "$dir/index.json")
+          curl -fsSL "$MIRROR/papermc/$PAPER_VERSION/$file?sha256=$sha" -o "$dir/server.jar"
+          actual=$("$py" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$dir/server.jar")
+          if [ "$actual" != "$sha" ]; then echo "::error::SHA-256 mismatch for $file"; exit 1; fi
+          echo "PAPER_JAR=$dir/server.jar" >> "$GITHUB_ENV"
+
+      - name: Real-Paper tests
+        shell: bash
+        run: |
+          chmod +x gradlew
+          native=()
+          [ "${{ matrix.transport }}" = native ] && native=(-Dio.netty.transport.noNative=false)
+          ./gradlew :paperhive-host:test --tests '*PaperInstanceIT' --tests '*HivePluginLeakIT' \
+            -Dpaperhive.it.paperJar="$PAPER_JAR" -Dpaperhive.it.cache="$RUNNER_TEMP/paperclip" \
+            -Dcom.mojang.eula.agree=true "${native[@]}"
+
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: paper-it-reports-${{ matrix.os }}-${{ matrix.transport }}
+          path: |
+            paperhive-host/build/reports/tests/
+            paperhive-host/build/test-work/**/*.hprof
+          retention-days: 14

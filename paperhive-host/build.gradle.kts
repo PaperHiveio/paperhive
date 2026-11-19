@@ -76,8 +76,9 @@ tasks.test {
     jvmArgs(addOpens.map { "--add-opens=$it=ALL-UNNAMED" })
 
     // opt-in Paper soak test (PaperInstanceIT): forward its -D flags to the test JVM
+    // (io.netty.transport.noNative=false lets Paper use epoll/kqueue instead of the NIO Paperhive picks by default)
     System.getProperties().stringPropertyNames()
-        .filter { it.startsWith("paperhive.it.") || it == "com.mojang.eula.agree" }
+        .filter { it.startsWith("paperhive.it.") || it == "com.mojang.eula.agree" || it == "io.netty.transport.noNative" }
         .forEach { systemProperty(it, System.getProperty(it)) }
     if (System.getProperty("paperhive.it.paperJar") != null) {
         maxHeapSize = "3g"

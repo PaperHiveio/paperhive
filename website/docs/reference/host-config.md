@@ -35,6 +35,7 @@ see [paperhive.yml (plugin)](plugin-descriptor.md).
 | `RestartDelay` | seconds, 0-86400 | `3` | Wait before restarting a crashed `Restart: on-crash` server. |
 | `MaxCrashes` | 1-1000 | `3` | No more restarts after this many crashes... |
 | `CrashWindow` | seconds, 1-604800 | `600` | ...within this many seconds. |
+| `VelocitySecret` | path | not set | Velocity's `forwarding.secret`. When set, every server is set up for [modern forwarding](../guide/velocity.md#forwarding-player-info) before each start. |
 
 `Host` changes apply when Paperhive starts.
 

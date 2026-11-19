@@ -48,7 +48,7 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
 
     private static final Set<String> TOP_KEYS = Set.of("ConfigurationVersion", "Software", "Version", "Host", "Servers");
     private static final Set<String> HOST_KEYS = Set.of("Plugins", "Cache", "Mirror", "StopTimeout", "MemoryWarning",
-            "RestartDelay", "MaxCrashes", "CrashWindow");
+            "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret");
     private static final Set<String> SERVER_KEYS = Set.of("Name", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
     // also a folder name and the console prefix
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_-]{1,32}");
@@ -72,6 +72,8 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
             #   RestartDelay: 3             seconds before a Restart: on-crash server starts again
             #   MaxCrashes: 3               ...and no more restarts after this many crashes
             #   CrashWindow: 600            ...within this many seconds
+            #   VelocitySecret: ../velocity/forwarding.secret
+            #                               set up Velocity modern forwarding on every server at each start
             Servers:
               - Name: main
                 Port: 25565
@@ -116,12 +118,13 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
      * @param plugins       the Hive plugins folder
      * @param cache         where downloaded and patched server jars are kept
      * @param mirror        the Paperhive mirror's base URL (https, ends in {@code /})
-     * @param memoryWarning warn when the shared heap is this percent full after a GC
+     * @param memoryWarning  warn when the shared heap is this percent full after a GC
+     * @param velocitySecret Velocity's {@code forwarding.secret}: when set, every server is set up for modern forwarding
      */
     public record Host(Path plugins, Path cache, String mirror, Duration stopTimeout, int memoryWarning,
-                       Duration restartDelay, int maxCrashes, Duration crashWindow) {
+                       Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret) {
         public static final Host DEFAULT = new Host(Path.of("plugins"), DirectoryConstants.CACHE_DIRECTORY_PATH,
-                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10));
+                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null);
 
         /** Patched jars: in their own folder, as PaperclipCache prunes every other entry of its folder. */
         public Path paperclipCache() {
@@ -368,9 +371,10 @@ public record HiveConfig(MCSoftware software, MCVersion version, Host host, List
         int delay = number(h, "RestartDelay", 0, 86_400, (int) d.restartDelay().toSeconds(), problems);
         int crashes = number(h, "MaxCrashes", 1, 1_000, d.maxCrashes(), problems);
         int window = number(h, "CrashWindow", 1, 86_400 * 7, (int) d.crashWindow().toSeconds(), problems);
+        String secret = string(h, "VelocitySecret", "Host.", null, problems);
         if (plugins == null || cache == null || mirror == null) return d; // reported above
         return new Host(Path.of(plugins), Path.of(cache), mirror.endsWith("/") ? mirror : mirror + "/", Duration.ofSeconds(stop),
-                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window));
+                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window), secret == null ? null : Path.of(secret));
     }
 
     private static int number(ObjectNode node, String key, int min, int max, int fallback, List<String> problems) {

@@ -26,6 +26,7 @@ Host:
   RestartDelay: 3
   MaxCrashes: 3
   CrashWindow: 600
+  VelocitySecret: ../velocity/forwarding.secret
 
 # What runs
 Servers:
@@ -126,6 +127,7 @@ Paperhive's defaults. That's mostly useful for one-off checks.
 | `RestartDelay`  | `3`                | Seconds before a `Restart: on-crash` server starts again.                                             |
 | `MaxCrashes`    | `3`                | Stop restarting a server after this many crashes...                                                   |
 | `CrashWindow`   | `600`              | ...within this many seconds.                                                                          |
+| `VelocitySecret` | not set | Velocity's `forwarding.secret`: set up [modern forwarding](velocity.md#forwarding-player-info) on every server at each start. |
 
 ## Changing settings while running
 

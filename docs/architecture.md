@@ -224,8 +224,12 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   format: `name<TAB>state<TAB>port`) and registers every `RUNNING` server as `host:port` (`config.properties`:
   `socket`, `host`, `interval`), unregistering it when it leaves `RUNNING`, changes port, or the host is unreachable.
   Servers already in `velocity.toml` are never touched. Same machine only (the socket is local); players still need a
-  `try` entry or forced host naming a server. Modern forwarding has to be set up on each server by hand for now
-  (`config/paper-global.yml`: `proxies.velocity.enabled/online-mode/secret`, and `online-mode=false`).
+  `try` entry or forced host naming a server.
+- **Modern forwarding**: with `Host.VelocitySecret` (the path of Velocity's `forwarding.secret`), `ServerManager.start`
+  runs `VelocityForwarding` before every start: `proxies.velocity` (`enabled`, `online-mode`, `secret`) in the server's
+  `config/paper-global.yml` and `online-mode=false` in its `server.properties`, keeping the rest of both files and
+  writing nothing when they already match. A missing or empty secret stops that start (a proxy couldn't log players
+  in). Crash restarts reuse the files as they are.
 - **Mirror URLs**: jars are requested as `<file>?sha256=<hash>` (the hash from `index.json`), so a jar replaced under
   the same name is a new URL for the CDN and can't be served stale.
 
@@ -253,6 +257,19 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   is memory held longer, not a leak. Decided: leave it. `SoftRefLRUPolicyMSPerMB` can't be changed at runtime (a
   launch flag), and lowering it affects every soft cache in the JVM; add `-XX:SoftRefLRUPolicyMSPerMB=0` to the
   launch flags only if restarting servers often on a small heap. The leak tests run with it, to tell lingering from leaking.
+
+## Late relative paths and JDBC drivers (M3/M4 follow-ups)
+- **`Files.*`**: a relative `Path` the JDK derives (`getFileName()`, `relativize`) isn't made absolute when it's
+  created, so opening it would resolve against the JVM cwd. `FilesMirror` generates `HiveFiles` at startup: one static
+  method per `java.nio.file.Files` method taking a `Path` (from `Files` itself, so none is missed on another JDK),
+  same name and descriptor, which makes relative `Path` arguments absolute (`HiveFs.file`) and calls the real one.
+  `InstanceTransformer` points instance code's `Files.*` calls (and method references) at it. Still not covered: a
+  relative `Path` opened through its `FileSystemProvider` directly.
+- **JDBC drivers of plugin loaders**: `DriverManager` only lets a driver's own loader (or a child) see or remove it.
+  `InstanceHooks.define` remembers every loader inside an instance that defines classes (Paper's plugin loaders,
+  server halves' `ServerHalfLoader`), and on stop `JdbcDrivers` defines its helper in each of them, not just the
+  instance loader. `ServerHalfLoader` defines its classes itself (instead of `URLClassLoader`'s JDK code) for this,
+  which also gets server halves rewritten like Paper's plugins (`System.exit`, files, ...).
 
 ## Known hazards
 - **Native libraries** (Netty epoll/io_uring, SQLite JNI): a native lib loads into one classloader per

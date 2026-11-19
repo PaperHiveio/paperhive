@@ -14,7 +14,8 @@ Paper/Paperclip behaviour it relies on (below), not a set of patches.
        -Dpaperhive.it.cache=<home>/.paperhive-cache/paperclip -Dcom.mojang.eula.agree=true
    ```
    (`PaperInstanceIT`: boots, restarts without leaks, file isolation, two instances joinable; `HivePluginLeakIT`: the
-   bridge and a server half across restarts, stats.)
+   bridge and a server half across restarts, stats.) Also set `PAPER_VERSION` in `.github/workflows/paper-it.yml`, which
+   runs the same tests in CI on Linux and Windows.
 5. Run the host end to end with the example plugin (`test-plugin`) in `plugins/`: `list`, `status`, `<server>
    hiveserver start <other>`, `attach`, `shutdown`.
 6. Go through the list below for anything the tests don't cover; update this file.

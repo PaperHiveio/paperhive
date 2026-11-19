@@ -145,6 +145,8 @@ public final class ServerInstance {
     /** Undoes JVM-wide registrations the instance made (see {@link InstanceTransformer}), run when it stops. */
     private final List<Runnable> onStop = new ArrayList<>();
     private final Set<ExecutorService> trackedExecutors = Collections.newSetFromMap(new WeakHashMap<>());
+    // loaders inside the instance that defined classes (Paper's plugin loaders, server halves'): JDBC cleanup visits each
+    private final Set<ClassLoader> definingLoaders = Collections.newSetFromMap(new WeakHashMap<>());
     private boolean exiting;
     private volatile long exitedAt; // nanoTime once exit hooks finished, 0 before
     @Getter
@@ -402,6 +404,10 @@ public final class ServerInstance {
         onStop.add(undo);
     }
 
+    synchronized void trackDefiningLoader(ClassLoader loader) {
+        definingLoaders.add(loader);
+    }
+
     synchronized ExecutorService trackExecutor(ExecutorService executor) {
         trackedExecutors.add(executor);
         return executor;
@@ -532,7 +538,12 @@ public final class ServerInstance {
                 log.warn("Could not undo a JVM-wide registration of instance {}", name, e);
             }
         }
-        cleanupJvmGlobals(loader);
+        List<ClassLoader> innerLoaders;
+        synchronized (this) {
+            innerLoaders = new ArrayList<>(definingLoaders);
+            definingLoaders.clear();
+        }
+        cleanupJvmGlobals(loader, innerLoaders);
         closeQuietly(loader);
         sinks.out().close(); // emits a last line that had no line break
         sinks.err().close();
@@ -676,7 +687,7 @@ public final class ServerInstance {
     }
 
     /** Undoes JVM-wide state the instance pointed at its own classes, which would otherwise keep its loader alive. */
-    private static void cleanupJvmGlobals(InstanceClassLoader loader) {
+    private static void cleanupJvmGlobals(InstanceClassLoader loader, List<ClassLoader> innerLoaders) {
         // System.out/err/in need nothing: instances only ever set their own slots (HiveIo)
         if (owned(Thread.getDefaultUncaughtExceptionHandler(), loader)) {
             Thread.setDefaultUncaughtExceptionHandler(HOST_DEFAULT_HANDLER);
@@ -709,7 +720,7 @@ public final class ServerInstance {
             if (owned(provider, loader)) Security.removeProvider(provider.getName());
         }
 
-        JdbcDrivers.deregister(loader);
+        JdbcDrivers.deregister(loader, innerLoaders);
     }
 
     private static boolean owned(@Nullable Object o, ClassLoader loader) {

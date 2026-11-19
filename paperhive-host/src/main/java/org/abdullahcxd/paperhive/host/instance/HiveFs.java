@@ -18,8 +18,9 @@ import java.nio.file.Path;
  * Only relative paths look up the caller (a stack walk); absolute ones return straight away.
  * Public because rewritten instance code calls it; shared with instances through {@link ApiGateLoader}.
  * <p>
- * shortcut: a relative {@code Path} the JDK derives later ({@code relativize}, {@code getFileName}) and code then
- * opens directly still resolves against the JVM cwd; rewrite {@code Files.*} if a server or plugin relies on that.
+ * A relative {@code Path} the JDK derives later ({@code relativize}, {@code getFileName}) is resolved when it's opened
+ * through {@code Files.*} ({@link FilesMirror}). Opening one through its {@code FileSystemProvider} directly, or
+ * {@code toFile()} then a JDK API that takes a {@code File}, still resolves against the JVM cwd.
  */
 public final class HiveFs {
 
@@ -51,6 +52,11 @@ public final class HiveFs {
     public static Path getPath(FileSystem fs, String first, String... more) {
         Path path = fs.getPath(first, more);
         return fs == FileSystems.getDefault() ? absolute(path) : path;
+    }
+
+    /** {@code Files.*} calls ({@link FilesMirror}): a relative path argument, made absolute; null stays null. */
+    public static Path file(Path path) {
+        return path == null ? null : absolute(path);
     }
 
     public static Path toAbsolutePath(Path path) {

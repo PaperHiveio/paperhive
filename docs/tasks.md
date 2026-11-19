@@ -58,7 +58,7 @@ Legend: `[ ]` todo, `[x]` done. Each milestone has an exit criterion; don't star
 - [x] Tests: `ServerInstanceTest` (exit/halt/return/serve fake server, locks, pools, restart, loader collected) and opt-in `PaperInstanceIT` against real Paper
 - [x] Deregister JDBC drivers an instance registered (`JdbcDrivers`: `DriverManager` only lets the driver's own loader see it, so a generated helper class is defined in the instance loader)
 - [x] Plugin code is rewritten too: `defineClass` calls made by instance code (Paper's `PluginClassLoader`, `PaperSimplePluginClassLoader`, ...) go through `InstanceTransformer` first, so a plugin calling `System.exit` ends only its instance (needs `--add-opens java.base/java.lang`)
-- [ ] JDBC drivers registered from a plugin's own loader aren't deregistered yet (the helper lives in the instance loader and can't see plugin classes)
+- [x] JDBC drivers registered from a plugin's own loader are deregistered too: every loader inside the instance that defines classes is remembered, and the helper is defined in each on stop; server halves' `ServerHalfLoader` now defines its classes itself, so they're rewritten and covered like Paper's plugins (`ServerInstanceTest.pluginExitStopsOnlyTheInstance`: the fake plugin registers its own driver, and the instance loader must still be collected)
 
 **Exit:** start, stop, and restart one instance 10 times with no growth in loaded classes or threads.
 (Verified with `PaperInstanceIT`: 10 rounds of real Paper, every loader collected, threads flat at 12, loaded classes 6940 → 7072 (+~14/round of JDK-internal classes), boot ~7s, stop ~7.4s.)
@@ -73,7 +73,7 @@ Legend: `[ ]` todo, `[x]` done. Each milestone has an exit criterion; don't star
 - [x] Hook the loader used for plugins (`PluginClassLoader`) so plugin code is transformed too (done in M3 via the `defineClass` rewrite)
 - [x] Remove the cwd hack: host home = cwd (`.paperhive-cache/`, `instances/<name>/`, host `logs/`); `ServerInstance` creates its root; `-Dpaperhive.cache` dropped
 - [x] Tests: `ServerInstanceTest.relativePathsResolveAgainstTheInstanceRoot` (every rewritten API) and `PaperInstanceIT.twoInstancesKeepToTheirOwnRoots` (two real Paper instances at once)
-- [ ] Relative `Path`s the JDK derives later (`relativize`, `getFileName`) and code then opens directly still resolve against the JVM cwd; rewrite `Files.*` if a server or plugin relies on that
+- [x] Relative `Path`s the JDK derives later (`relativize`, `getFileName`) and opens through `Files.*` resolve against the instance root: `FilesMirror` generates a same-signature mirror of every `Files` method taking a `Path`, and instance code's `Files.*` calls go through it (`ServerInstanceTest.relativePathsResolveAgainstTheInstanceRoot`: `derived.txt`); opening one through a `FileSystemProvider` directly is still not covered
 
 **Exit:** two instances with different roots never touch each other's files; host cwd is irrelevant.
 (Verified: two real Paper instances run at once in one JVM, each writes world/, logs/, configs, usercache.json etc. only into its own root; the JVM cwd gets nothing but the host's own log. The host run from a fresh home puts everything Paper writes under `instances/main`.)
@@ -97,7 +97,7 @@ Legend: `[ ]` todo, `[x]` done. Each milestone has an exit criterion; don't star
 - [x] Netty native transport: forced NIO (`io.netty.transport.noNative=true`, set by `ServerInstance` unless already set; Paper's Netty 4.2.7 checks it for epoll and kqueue). Native would extract and load another copy of the library per instance loader on every restart, for no real gain at this scale
 - [x] Verify static state is truly separate: each instance has its own `Bukkit` class and server object with its own port and motd; restarting one leaves the other's server object in place (`PaperInstanceIT.twoInstancesAreJoinableAndRestartIndependently`)
 - [x] Stop and start one while the other runs: the other stays `RUNNING` and keeps accepting logins; the stopped one's port closes, it comes back, and its old loader is collected (same test; logins via the test's `MinecraftClient`)
-- [ ] Native transport on Linux/macOS not exercised (only Windows here, where Netty has none); covered by "Test on Windows and Linux" below
+- [ ] Native transport on Linux/macOS not exercised (only Windows here, where Netty has none): the `paper-it` workflow's Linux "native" variant runs the real-Paper tests with `-Dio.netty.transport.noNative=false`; check its result once it has run
 
 **Exit:** both are joinable at once; restarting one doesn't affect the other.
 
@@ -138,7 +138,7 @@ Legend: `[ ]` todo, `[x]` done. Each milestone has an exit criterion; don't star
 - [x] Event bus (`Hive.getEventBus()`, Guava-style): `@Subscribe` (priority, ignoreCancelled), `HiveEvent`/`CancellableEvent`, subtypes delivered; `ServerStateChangeEvent`, `ServerStartEvent` (cancellable), `ServerStartedEvent`, `ServerStoppedEvent`, `ServerCrashEvent`
 - [x] Listeners and subscriptions are owned by their class loader's server or Hive plugin and dropped when it stops / is disabled
 - [x] `paperhive-sdk`: one `compileOnly` dependency for plugin authors (Hive API, plugin API, `HiveBukkitPlugin`, Paper API)
-- [ ] Publish `paperhive-sdk` (and what it pulls in) to a Maven repository for plugin authors outside this build
+- [x] Publish `paperhive-sdk` (and what it pulls in) to a Maven repository for plugin authors outside this build: every artifact (SDK, API, plugin API, bridge, host jar, Gradle plugin) is published to `https://maven.abdullahcxd.org/releases` by the `release` workflow on a `v*` tag, with POM metadata and sources jars
 
 Hive plugins (host half `PaperhivePlugin`, loaded by Paperhive, not by Paper):
 - [x] `PaperhivePlugin` base with `onEnable` / `onServerStart` / `onDisable` and `getLogger()`
@@ -164,10 +164,10 @@ Bukkit bridge (Hive plugins use their server like Bukkit plugins; design in `arc
 ## M10: Hardening
 - [x] Memory: per-server limits aren't possible (one heap, no per-loader accounting) and retained per-server memory isn't cheap to estimate, so none is shown; documented with how to size `-Xmx` and how to find per-server memory from a heap dump; the host logs the heap limit, `status` shows TPS / tick time (M9)
 - [x] OOM/crash policy: keep running (the OOM'd server crashes and frees its loader); `MemoryWatch` warns when the heap is 90% full after a GC, naming the running servers; heap dump on the first OOM into `logs/` unless the launch flags decide; no host watchdog (Paper's per-server one stays; run under a supervisor for JVM death)
-- [ ] Test on Linux (path handling, process spawn, file locks, the Unix socket, native transport): no Linux here; covered by the CI workflow below once it runs (Windows: everything in this file)
+- [ ] Test on Linux (path handling, process spawn, file locks, the Unix socket, native transport): every unit test passes on Ubuntu in the `build` workflow; the real-Paper tests run there in `paper-it`; check its result once it has run (Windows: everything in this file)
 - [x] Soft caches: decided to leave `SoftRefLRUPolicyMSPerMB` alone (launch-only flag, JVM-wide effect; soft references clear before an OOM); documented as a launch option, the leak tests use it
 - [x] CI: `.github/workflows/build.yml` runs `./gradlew build` on Ubuntu and Windows (Temurin 21), uploads test reports on failure; not run yet (no Git repository / remote here)
-- [ ] CI job for the real-Paper tests (needs the Paper jar from the mirror and the EULA flag)
+- [x] CI job for the real-Paper tests: `.github/workflows/paper-it.yml` downloads the Paper jar from the mirror (SHA-256 checked) and runs `PaperInstanceIT` and `HivePluginLeakIT` on Linux and Windows, on pushes that touch the host, weekly, and by hand
 - [x] Paper version upgrade procedure and the list of what depends on the Paper version: `docs/upgrading.md`
 - [x] Fork or not: no fork (the rewrites are JDK-level; no Paper patches); reasons in `docs/upgrading.md`
 
@@ -179,7 +179,7 @@ Bukkit bridge (Hive plugins use their server like Bukkit plugins; design in `arc
 - [x] Shared plugin folders: `SharedPlugins: [shared/plugins, ...]` per server, passed as Paper's own `--add-plugin-dir` (no symlinks or overlay needed): the jars are shared, each plugin's data folder (and Paper's remapped copy) stays in that server's `plugins/`; missing folders are created; settable with `set <name> SharedPlugins [...]`
 - [x] Velocity auto-registration: `paperhive-velocity`, a Velocity plugin that asks the host through its control socket (`list --tsv`) every few seconds and registers its `RUNNING` servers with the proxy, unregisters them when they stop (or the host is unreachable), and leaves servers configured in `velocity.toml` alone; the proxy must run on the host's machine (Unix socket)
 - [x] Velocity: test against a real proxy: Velocity from the mirror (`velocitymc/4.3.5-45`, boots as 4.3.1, needs Java 25) with the plugin: unreachable host warned, then alpha/beta registered on `RUNNING`, unregistered on `stop`, and all unregistered when the host shut down; `velocity.toml` servers untouched. Not tested: a player connecting through the proxy
-- [ ] Velocity: set up modern forwarding on the servers (`config/paper-global.yml` `proxies.velocity`, `online-mode=false`); today that's manual per server
+- [x] Velocity: modern forwarding set up on the servers: `Host.VelocitySecret` (Velocity's `forwarding.secret`) makes Paperhive write `proxies.velocity` into each server's `config/paper-global.yml` and `online-mode=false` into its `server.properties` before every start, keeping the rest (`VelocityForwardingTest`)
 - [x] Per-server JVM metrics: `status` shows live threads and the classes the server's loader defined (Paper and its libraries; plugins' loaders aren't counted)
 
 (Verified: a fresh download through the new jar URL; with real Paper, two servers loading one shared folder kept separate data folders, `status` showed threads/classes, `hive list --tsv` over the socket gave the plugin's format; `ServerSyncTest` covers registering, port changes, configured servers and the host going away.)

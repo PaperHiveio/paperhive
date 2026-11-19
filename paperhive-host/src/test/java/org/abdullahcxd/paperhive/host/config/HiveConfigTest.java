@@ -74,6 +74,7 @@ class HiveConfigTest {
                   RestartDelay: 0
                   MaxCrashes: 5
                   CrashWindow: 60
+                  VelocitySecret: ../velocity/forwarding.secret
                 Servers:
                   - Name: a
                     Port: 1
@@ -81,7 +82,7 @@ class HiveConfigTest {
                 """);
         HiveConfig config = HiveConfig.load(file);
         assertEquals(new HiveConfig.Host(Path.of("hive-plugins"), Path.of("/tmp/cache"), "https://mirror.example/versions/",
-                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60)), config.host());
+                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60), Path.of("../velocity/forwarding.secret")), config.host());
         ServerInstance.Options options = config.servers().getFirst().options(config.host());
         assertEquals(List.of(Duration.ZERO, 5, Duration.ofSeconds(60)), List.of(options.restartDelay(), options.maxCrashes(), options.crashWindow()));
 

@@ -53,7 +53,7 @@ final class InstanceTransformer {
      * is only run through ASM if its constant pool references one of these (or any {@code defineClass}, whose owner
      * varies). Keep in sync with the rewrites; {@code InstanceTransformerTest} checks each is caught.
      */
-    static final Set<String> TARGETS = Set.of(
+    static final Set<String> TARGETS = withFiles(
             "java/lang/System.exit", "java/lang/System.out", "java/lang/System.err", "java/lang/System.in",
             "java/lang/System.setOut", "java/lang/System.setErr", "java/lang/System.setIn", "java/lang/System.getProperty",
             "java/lang/Runtime.exit", "java/lang/Runtime.halt", "java/lang/Runtime.addShutdownHook",
@@ -69,6 +69,12 @@ final class InstanceTransformer {
             "java/util/logging/Logger.getLogger", "java/util/logging/Logger.getGlobal",
             "java/util/logging/LogManager.getLogger", "java/util/logging/LogManager.addLogger",
             "java/util/logging/LogManager.getLoggerNames", "java/util/logging/LogManager.reset");
+
+    private static Set<String> withFiles(String... targets) {
+        Set<String> all = new java.util.HashSet<>(Set.of(targets));
+        all.addAll(FilesMirror.TARGETS); // every java/nio/file/Files method taking a Path
+        return Set.copyOf(all);
+    }
 
     /** {@code ClassLoader} / {@code SecureClassLoader} {@code defineClass} overloads that take class bytes. */
     static final Set<String> DEFINE_CLASS_DESCRIPTORS = Set.of(
@@ -225,6 +231,9 @@ final class InstanceTransformer {
             };
         }
         if (opcode == Opcodes.INVOKESTATIC) {
+            if (owner.equals("java/nio/file/Files") && FilesMirror.METHODS.contains(call)) {
+                return new String[]{FilesMirror.NAME, name, desc};
+            }
             if ((owner.equals("java/nio/file/Path") && call.equals("of(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;"))
                     || (owner.equals("java/nio/file/Paths") && call.equals("get(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;"))) {
                 return new String[]{FS, "path", desc};
