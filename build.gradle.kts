@@ -79,10 +79,10 @@ subprojects {
     dependencies {
         "implementation"(libs.findLibrary("slf4j-api").get())
 
-        "annotationProcessor"("org.jetbrains:annotations:26.0.2")
-        "compileOnly"("org.jetbrains:annotations:26.0.2")
+        "annotationProcessor"("org.jetbrains:annotations:26.1.0")
+        "compileOnly"("org.jetbrains:annotations:26.1.0")
 
-        "annotationProcessor"("org.projectlombok:lombok:1.18.46")
-        "compileOnly"("org.projectlombok:lombok:1.18.46")
+        "annotationProcessor"("org.projectlombok:lombok:1.18.48")
+        "compileOnly"("org.projectlombok:lombok:1.18.48")
     }
 }
