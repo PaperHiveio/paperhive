@@ -1,7 +1,8 @@
 # The real-Paper tests (PaperInstanceIT, HivePluginLeakIT): boot, restart and stop real Paper servers in one JVM,
 # checking isolation and that nothing leaks across 10 restarts. Slow (~6 min), so not on every pull request.
 # Runs on Linux and Windows; the Linux "native" variant lets Paper use Netty's epoll transport instead of the NIO
-# Paperhive picks by default (informational: it may fail without that being a regression).
+# Paperhive picks by default. It's informational: with epoll a stopped server's loader is sometimes freed late (the
+# leak checks can fail), which is why NIO is the default (docs/tasks.md, M6).
 # By running this, the EULA flag below accepts the Minecraft EULA for these throwaway test servers.
 name: paper-it
 
@@ -62,9 +63,10 @@ jobs:
           dir="$RUNNER_TEMP/paper"
           mkdir -p "$dir"
           curl -fsSL "$MIRROR/papermc/$PAPER_VERSION/index.json" -o "$dir/index.json"
-          read -r file sha < <("$py" -c "import json,sys; i=json.load(open(sys.argv[1])); print(i['file'], i['sha256'])" "$dir/index.json")
+          # tr: Python on Windows ends lines with \r\n, which would end up in the URL
+          read -r file sha < <("$py" -c "import json,sys; i=json.load(open(sys.argv[1])); print(i['file'], i['sha256'])" "$dir/index.json" | tr -d '\r')
           curl -fsSL "$MIRROR/papermc/$PAPER_VERSION/$file?sha256=$sha" -o "$dir/server.jar"
-          actual=$("$py" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$dir/server.jar")
+          actual=$("$py" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$dir/server.jar" | tr -d '\r')
           if [ "$actual" != "$sha" ]; then echo "::error::SHA-256 mismatch for $file"; exit 1; fi
           echo "PAPER_JAR=$dir/server.jar" >> "$GITHUB_ENV"
 
