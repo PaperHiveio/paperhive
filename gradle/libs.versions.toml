@@ -6,7 +6,7 @@ slf4j = "2.0.17"
 log4j = "2.25.2"
 jline = "3.30.6"
 paper-api = "1.21.11-R0.1-SNAPSHOT"
-velocity-api = "3.4.0-SNAPSHOT"
+velocity-api = "4.3.1"
 
 [libraries]
 jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
