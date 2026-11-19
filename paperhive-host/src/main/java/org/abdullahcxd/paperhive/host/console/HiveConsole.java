@@ -17,6 +17,8 @@ import org.jline.terminal.TerminalBuilder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.IOError;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -68,7 +70,7 @@ public final class HiveConsole {
                 })
                 .build();
         self[0] = new HiveConsole(terminal, reader);
-        PrintStream above = new PrintStream(new AboveOutput(reader), true, StandardCharsets.UTF_8);
+        PrintStream above = new PrintStream(new AboveOutput(reader, System.out), true, StandardCharsets.UTF_8);
         System.setOut(above);
         System.setErr(above);
         return self[0];
@@ -120,6 +122,9 @@ public final class HiveConsole {
                 line = "shutdown";
             } catch (EndOfFileException e) {
                 return; // input ended (e.g. a service): the servers keep running, `hive` clients still work
+            } catch (IllegalStateException | IOError | UncheckedIOException e) {
+                // the terminal was closed under the prompt: JLine's shutdown hook does that while the JVM exits
+                return;
             }
             handle(line);
         }
@@ -145,12 +150,16 @@ public final class HiveConsole {
     /** Whole lines go to {@link LineReader#printAbove}, which redraws the prompt and what's typed under them. */
     private static final class AboveOutput extends OutputStream {
         private final LineReader reader;
+        private final PrintStream fallback;
         private final ByteArrayOutputStream line = new ByteArrayOutputStream();
 
         private final boolean plain;
+        private boolean terminalGone;
 
-        private AboveOutput(LineReader reader) {
+        /** @param fallback the JVM's own standard output, for when the terminal is gone */
+        private AboveOutput(LineReader reader, PrintStream fallback) {
             this.reader = reader;
+            this.fallback = fallback;
             this.plain = reader.getTerminal().getType().equals(Terminal.TYPE_DUMB); // "dumb-color" keeps them
         }
 
@@ -164,7 +173,17 @@ public final class HiveConsole {
             line.reset();
             if (text.endsWith("\r")) text = text.substring(0, text.length() - 1);
             // JLine passes text through as is when it isn't reading a line; without a colour terminal, drop the colours
-            reader.printAbove(plain ? ConsoleText.strip(text) : text);
+            if (!terminalGone) {
+                try {
+                    reader.printAbove(plain ? ConsoleText.strip(text) : text);
+                    return;
+                } catch (IllegalStateException | IOError | UncheckedIOException e) {
+                    // closed by JLine's shutdown hook while the JVM exits; what's still said (shutdown logs, an
+                    // uncaught exception's trace) goes straight to standard output instead of failing in turn
+                    terminalGone = true;
+                }
+            }
+            fallback.println(ConsoleText.strip(text));
         }
     }
 
