@@ -1,10 +1,10 @@
 [versions]
-jackson = "3.0.0"
-asm = "9.8"
-shadow = "9.0.0"
-slf4j = "2.0.17"
-log4j = "2.25.2"
-jline = "3.30.6"
+jackson = "3.3.0"
+asm = "9.11.1"
+shadow = "9.6.1"
+slf4j = "2.0.20"
+log4j = "2.26.1"
+jline = "4.7.0"
 paper-api = "1.21.11-R0.1-SNAPSHOT"
 velocity-api = "3.4.0-SNAPSHOT"
 
