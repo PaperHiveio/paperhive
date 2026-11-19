@@ -41,7 +41,7 @@ class ControlSocketTest {
         Reply tsv = send("list --tsv");
         assertEquals(0, tsv.code(), tsv.err());
         assertEquals("main\tCREATED\t25565\tpapermc", tsv.out().strip(), "the stable format the Velocity plugin reads");
-        assertTrue(send("hive status main").out().startsWith("main: CREATED"), "an optional leading hive works too");
+        assertTrue(send("hive status main").out().startsWith("main  CREATED"), "an optional leading hive works too; no colours over the socket");
 
         IOException second = assertThrows(IOException.class, () -> ControlSocket.serve(commands, servers));
         assertTrue(second.getMessage().contains("already runs"), second.getMessage());

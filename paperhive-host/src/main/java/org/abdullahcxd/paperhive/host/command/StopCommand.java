@@ -5,6 +5,8 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class StopCommand extends ServerCommand {
 
     StopCommand(ServerManager servers) {
@@ -14,11 +16,11 @@ final class StopCommand extends ServerCommand {
     @Override
     protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         if (!instance.isActive()) {
-            sender.sendMessage(instance.getName() + " isn't running");
+            sender.sendMessage(warning(name(instance.getName()) + " isn't running"));
             return;
         }
         servers.stop(instance);
-        sender.sendMessage("Stopping " + instance.getName());
+        sender.sendMessage(info("Stopping " + name(instance.getName())));
     }
 
 }

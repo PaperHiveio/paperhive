@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
+import org.abdullahcxd.paperhive.plugin.command.ConsoleText;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
@@ -49,7 +50,7 @@ class CommandRegistryTest {
 
     private static HiveCommandSender sender(List<String> out, boolean console) {
         return new HiveCommandSender() {
-            @Override public void sendMessage(@NonNull String message) { out.add(message); }
+            @Override public void sendMessage(@NonNull String message) { out.add(ConsoleText.strip(message)); }
             @Override public boolean isConsole() { return console; }
         };
     }
@@ -79,8 +80,8 @@ class CommandRegistryTest {
         registry.register(greet);
         assertEquals("hello world", run("greet world"));
         assertEquals("hello world", run("hive HI world"), "alias, any case, optional hive");
-        assertEquals("usage: greet <who>", run("greet"));
-        assertEquals("greet failed: java.lang.IllegalStateException: boom", run("greet boom"), "a throwing command doesn't take the console down");
+        assertEquals("× Usage: greet <who>", run("greet"));
+        assertEquals("× greet failed: java.lang.IllegalStateException: boom", run("greet boom"), "a throwing command doesn't take the console down");
         assertTrue(run("help").contains("greet <who>"));
         assertThrows(IllegalArgumentException.class, () -> registry.register(new GreetCommand()), "name taken");
         assertThrows(IllegalArgumentException.class, () -> registry.register(new HiveCommand("x", "", "", "LIST") {
@@ -88,7 +89,7 @@ class CommandRegistryTest {
         }), "an alias can't take a built-in's name either");
 
         registry.unregister(greet);
-        assertEquals("unknown command 'greet'; `help` lists them", run("greet world"));
+        assertEquals("× Unknown command greet, help lists them", run("greet world"));
         assertNull(registry.find("hi"));
     }
 
@@ -107,27 +108,27 @@ class CommandRegistryTest {
 
     @Test
     void createListStatus() throws Exception {
-        assertTrue(run("list").matches("main +CREATED +port 25565"), run("list"));
-        assertTrue(run("create lobby").startsWith("Created lobby on port 25566"));
-        assertTrue(run("hive create game 30000").startsWith("Created game on port 30000"));
+        assertTrue(run("list").matches("(?s) +SERVER +STATE.*\n +main +CREATED +25565 +papermc *"), run("list"));
+        assertTrue(run("create lobby").startsWith("» Created lobby on port 25566"));
+        assertTrue(run("hive create game 30000").startsWith("» Created game on port 30000"));
         assertEquals(List.of("main", "lobby", "game"), servers.names());
         assertTrue(Files.readString(tmp.resolve(HiveConfig.FILE_NAME)).contains("- Name: game\n    Port: 30000"));
         String status = run("status game");
-        assertTrue(status.startsWith("game: CREATED") && status.contains("Port:      30000") && status.contains("Restart:   never"), status);
+        assertTrue(status.startsWith("game  CREATED") && status.contains("Port        30000") && status.contains("Restart     never"), status);
     }
 
     @Test
     void badInputGetsAnAnswer() {
         assertTrue(run("hive").contains("list"), "a bare hive is help");
-        assertEquals("unknown command 'frobnicate'; `help` lists them", run("frobnicate"));
-        assertEquals("no server named nope; known: [main]", run("start nope"));
-        assertEquals("usage: stop <name>", run("stop"));
-        assertEquals("main isn't running", run("stop main"));
-        assertEquals("main isn't running", run("main list"), "<server> <command>");
-        assertEquals("main isn't running", run("all list"));
-        assertTrue(run("create main").startsWith("Not created:"));
-        assertTrue(run("create x port").startsWith("port: expected a number"));
-        assertTrue(run("attach main", false).startsWith("attach only works on the host console"));
+        assertEquals("× Unknown command frobnicate, help lists them", run("frobnicate"));
+        assertEquals("× No server named nope; known: main", run("start nope"));
+        assertEquals("× Usage: stop <name>", run("stop"));
+        assertEquals("! main isn't running", run("stop main"));
+        assertEquals("! main isn't running", run("main list"), "<server> <command>");
+        assertEquals("! main isn't running", run("all list"));
+        assertTrue(run("create main").startsWith("× Not created:"));
+        assertTrue(run("create x port").startsWith("× Port must be a number"));
+        assertTrue(run("attach main", false).startsWith("× attach only works on the host console"));
     }
 
     @Test
@@ -136,17 +137,17 @@ class CommandRegistryTest {
         ServerInstance before = servers.instance("lobby");
         assertEquals("Set Restart of lobby to on-crash", run("set lobby Restart on-crash"));
         assertEquals("Set Args of lobby to [--a, --b]", run("set lobby Args [--a, --b]"));
-        assertTrue(run("status lobby").contains("Restart:   on-crash"));
-        assertTrue(run("set lobby Port 25565").startsWith("Not changed:"), "main has that port");
+        assertTrue(run("status lobby").contains("Restart     on-crash"));
+        assertTrue(run("set lobby Port 25565").startsWith("× Not changed:"), "main has that port");
         assertTrue(run("set lobby Colour red").contains("Colour: unknown key"));
-        assertEquals("usage: set <name> <Key> [value]", run("set lobby"));
+        assertEquals("× Usage: set <name> <Key> [value]", run("set lobby"));
         assertSame(before, servers.instance("lobby"), "a new instance is only made when it starts");
 
         run("attach lobby");
-        assertTrue(run("delete lobby").startsWith("Deleted lobby from"));
+        assertTrue(run("delete lobby").startsWith("» Deleted lobby from"));
         assertNull(servers.attached(), "deleting the attached server detaches");
         assertEquals(List.of("main"), servers.names());
-        assertTrue(run("delete main").startsWith("Not deleted:"), "the last server stays");
+        assertTrue(run("delete main").startsWith("× Not deleted:"), "the last server stays");
     }
 
     @Test
@@ -157,10 +158,10 @@ class CommandRegistryTest {
         assertSame(main, servers.attached());
         run("create late");
         assertEquals(List.of(true, false, false), servers.instances().stream().map(i -> i.getConsole().isEcho()).toList());
-        assertEquals("Detached", run("detach"));
+        assertEquals("» Detached", run("detach"));
         assertNull(servers.attached());
         assertTrue(servers.instances().stream().allMatch(i -> i.getConsole().isEcho()));
-        assertEquals("not attached", run("detach"));
+        assertEquals("! Not attached", run("detach"));
     }
 
 }

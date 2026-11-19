@@ -6,6 +6,8 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class DeleteCommand extends ServerCommand {
 
     DeleteCommand(ServerManager servers) {
@@ -16,14 +18,14 @@ final class DeleteCommand extends ServerCommand {
     protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         String name = instance.getName();
         if (instance.isActive()) {
-            sender.sendMessage(name + " is " + instance.getState() + "; stop it first");
+            sender.sendMessage(error(name(name) + " is " + state(instance.getState().name()) + muted("; stop it first")));
             return;
         }
         try {
             servers.delete(instance);
-            sender.sendMessage("Deleted " + name + " from " + servers.getConfigFile() + "; its folder " + instance.getRoot() + " is kept");
+            sender.sendMessage(success("Deleted " + name(name) + muted(" from " + servers.getConfigFile() + "; its folder " + instance.getRoot() + " is kept")));
         } catch (HiveConfig.HiveConfigException e) {
-            sender.sendMessage("Not deleted: " + e.getMessage());
+            sender.sendMessage(error("Not deleted: " + e.getMessage()));
         }
     }
 

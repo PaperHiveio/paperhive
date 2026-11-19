@@ -11,6 +11,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.function.Function;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class ListCommand extends HiveCommand {
 
     private final ServerManager servers;
@@ -34,10 +36,16 @@ final class ListCommand extends HiveCommand {
             sendUsage(sender);
             return;
         }
+        if (servers.instances().isEmpty()) {
+            sender.sendMessage(warning("No servers yet; add one with " + command("create <name> <port>")));
+            return;
+        }
+        sender.sendMessage(muted("  " + pad("SERVER", 18) + pad("STATE", 10) + pad("PORT", 7) + pad("SOFTWARE", 12) + "PLAYERS   TPS"));
         for (ServerInstance i : servers.instances()) {
             HiveServerStats s = stats.apply(i.getName());
-            String load = s == null ? "" : String.format("  %d/%d players  %.1f TPS", s.players(), s.maxPlayers(), Math.min(s.tps1m(), 20));
-            sender.sendMessage(String.format("%-16s %-8s port %s%s", i.getName(), i.getState(), i.getOptions().port(), load));
+            String load = s == null ? "" : pad(value(s.players() + "") + muted("/" + s.maxPlayers()), 10) + tps(s.tps1m());
+            sender.sendMessage("  " + pad(name(i.getName()), 18) + pad(state(i.getState().name()), 10)
+                    + pad(String.valueOf(i.getOptions().port()), 7) + pad(muted(i.getSoftware().id().getName()), 12) + load);
         }
     }
 

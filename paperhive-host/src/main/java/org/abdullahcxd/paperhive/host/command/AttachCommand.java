@@ -6,6 +6,8 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 /** On the console; a socket client's attach is a session of its own (see {@code ControlSocket}). */
 final class AttachCommand extends ServerCommand {
 
@@ -16,11 +18,11 @@ final class AttachCommand extends ServerCommand {
     @Override
     protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         if (!sender.isConsole()) {
-            sender.sendMessage("attach only works on the host console or as `hive attach <name>` on its own");
+            sender.sendMessage(error("attach only works on the host console, or as " + command("hive attach <name>") + " on its own"));
             return;
         }
         servers.attach(instance);
-        sender.sendMessage("Attached to " + instance.getName() + ": lines go to it and only its output shows; `hive detach` to leave");
+        sender.sendMessage(success("Attached to " + name(instance.getName()) + muted(": lines go to it and only its output shows; ") + command("hive detach") + muted(" to leave")));
     }
 
 }

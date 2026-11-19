@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.plugin;
 
+import org.abdullahcxd.paperhive.plugin.command.ConsoleText;
 import org.abdullahcxd.paperhive.api.internal.BridgeHooks.ServerHalf;
 import org.abdullahcxd.paperhive.host.hive.TestHive;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
@@ -59,7 +60,7 @@ class HivePluginManagerTest {
     private String run(String line) {
         List<String> out = new ArrayList<>();
         commands.execute(new HiveCommandSender() {
-            @Override public void sendMessage(String message) { out.add(message); }
+            @Override public void sendMessage(String message) { out.add(ConsoleText.strip(message)); }
             @Override public boolean isConsole() { return true; }
         }, line);
         return String.join("\n", out);
@@ -79,7 +80,7 @@ class HivePluginManagerTest {
         plugins.enableAll(commands);
         assertTrue(plugins.isEnabled(example));
         assertEquals("Hello, world!", run("greet world"), "its Hive command");
-        assertTrue(run("plugin list").matches("ExamplePlugin +1\\.0\\.0 +enabled +\\+ server half"), run("plugin list"));
+        assertTrue(run("plugin list").matches(" +ExamplePlugin +1\\.0\\.0 +enabled +\\+ server half"), run("plugin list"));
 
         HiveConfig.Server main = servers.server("main");
         assertEquals(List.of(new ServerHalf("ExamplePlugin", "1.0.0", tmp.resolve("plugins/example.jar").toAbsolutePath(), "org.example.ExampleServerPlugin")),
@@ -87,12 +88,12 @@ class HivePluginManagerTest {
         servers.set("main", "DisabledHivePlugins", "[exampleplugin]");
         assertEquals(List.of(), plugins.serverHalves(servers.server("main")), "DisabledHivePlugins, any case");
 
-        assertEquals("Disabled ExamplePlugin; its server half follows at each server's next start", run("plugin disable ExamplePlugin"));
-        assertEquals("unknown command 'greet'; `help` lists them", run("greet world"), "its commands went with it");
+        assertEquals("» Disabled ExamplePlugin; its server half follows at each server's next start", run("plugin disable ExamplePlugin"));
+        assertEquals("× Unknown command greet, help lists them", run("greet world"), "its commands went with it");
         assertEquals(List.of(), plugins.serverHalves(main));
-        assertTrue(run("plugin enable exampleplugin").startsWith("Enabled ExamplePlugin"));
+        assertTrue(run("plugin enable exampleplugin").startsWith("» Enabled ExamplePlugin"));
         assertEquals("Hello, x!", run("hi x"));
-        assertEquals("no Hive plugin named nope", run("plugin enable nope"));
+        assertEquals("× No Hive plugin named nope", run("plugin enable nope"));
     }
 
     @Test

@@ -23,6 +23,8 @@ import org.abdullahcxd.paperhive.host.instance.InstanceConsole;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 
+import org.abdullahcxd.paperhive.plugin.command.ConsoleText;
+
 /**
  * Lets {@code java -jar paperhive.jar hive <command>} control the host running in the same folder, through the
  * Unix domain socket {@code paperhive.sock} (local only; on Linux its file permissions decide who may use it).
@@ -108,7 +110,8 @@ public final class ControlSocket {
         return new HiveCommandSender() {
             @Override
             public void sendMessage(@NotNull String message) {
-                write(out, List.of(message));
+                // tools read these lines (list --tsv); colours are for the host's own console
+                write(out, List.of(ConsoleText.strip(message)));
             }
 
             @Override

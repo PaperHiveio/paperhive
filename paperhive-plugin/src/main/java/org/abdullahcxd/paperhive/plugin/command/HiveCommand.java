@@ -43,7 +43,7 @@ public abstract class HiveCommand {
 
     /** {@code usage: <name> <usage>}, for a wrong number of arguments. */
     protected void sendUsage(@NotNull HiveCommandSender sender) {
-        sender.sendMessage("usage: " + name + (usage.isEmpty() ? "" : " " + usage));
+        sender.sendMessage(ConsoleText.error(ConsoleText.muted("Usage: ") + ConsoleText.command(name + (usage.isEmpty() ? "" : " " + usage))));
     }
 
 }

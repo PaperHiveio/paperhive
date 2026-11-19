@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 /** A command taking one server name: checks it and completes it. */
 abstract class ServerCommand extends HiveCommand {
 
@@ -27,7 +29,7 @@ abstract class ServerCommand extends HiveCommand {
             return;
         }
         ServerInstance instance = servers.instance(args.getFirst());
-        if (instance == null) sender.sendMessage("no server named " + args.getFirst() + "; known: " + servers.names());
+        if (instance == null) sender.sendMessage(error("No server named " + value(args.getFirst()) + muted("; known: " + String.join(", ", servers.names()))));
         else execute(sender, instance);
     }
 

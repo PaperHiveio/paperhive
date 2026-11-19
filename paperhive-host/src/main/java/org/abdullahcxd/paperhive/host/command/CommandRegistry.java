@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 /**
  * Every {@link HiveCommand}, Paperhive's own and those of Hive plugins, and how a typed line reaches one:
  * <ol>
@@ -93,18 +95,18 @@ public final class CommandRegistry implements HiveCommandRegistry {
                 command.execute(sender, words.subList(1, words.size()));
             } catch (RuntimeException e) {
                 log.error("Hive command '{}' failed", line, e);
-                sender.sendMessage(command.getName() + " failed: " + e);
+                sender.sendMessage(error(command(command.getName()) + " failed: " + muted(e.toString())));
             }
             return;
         }
         String rest = stripped.substring(first.length()).strip(); // as typed: the server parses it
         ServerInstance target = servers.instance(first);
         if (rest.isEmpty() || (target == null && !first.equals("all"))) {
-            sender.sendMessage("unknown command '" + first + "'; `help` lists them");
+            sender.sendMessage(error("Unknown command " + value(first) + muted(", ") + command("help") + muted(" lists them")));
             return;
         }
         for (ServerInstance instance : target != null ? List.of(target) : servers.instances()) {
-            if (!instance.dispatchCommand(rest)) sender.sendMessage(instance.getName() + " isn't running");
+            if (!instance.dispatchCommand(rest)) sender.sendMessage(warning(name(instance.getName()) + " isn't running"));
         }
     }
 

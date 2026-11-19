@@ -13,6 +13,8 @@ import java.util.Locale;
 import java.util.function.Function;
 import org.jetbrains.annotations.Nullable;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class StatusCommand extends ServerCommand {
 
     private final Function<String, @Nullable HiveServerStats> stats;
@@ -26,23 +28,33 @@ final class StatusCommand extends ServerCommand {
     protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance i) {
         HiveConfig.Server server = servers.server(i.getName());
         Duration uptime = i.uptime();
-        sender.sendMessage(i.getName() + ": " + i.getState() + (uptime == null ? "" : " for " + format(uptime)));
-        sender.sendMessage("  Port:      " + server.port());
-        sender.sendMessage("  Root:      " + i.getRoot());
-        sender.sendMessage("  Autostart: " + server.autostart());
-        sender.sendMessage("  Restart:   " + server.restart().name().toLowerCase(Locale.ROOT).replace('_', '-'));
+        sender.sendMessage(name(i.getName()) + "  " + state(i.getState().name()) + (uptime == null ? "" : muted(" for ") + value(format(uptime))));
+        sender.sendMessage(row("Software", i.getSoftware().displayName() + " " + server.version().getVersion()));
+        sender.sendMessage(row("Port", String.valueOf(server.port())));
+        sender.sendMessage(row("Root", i.getRoot().toString()));
+        sender.sendMessage(row("Autostart", String.valueOf(server.autostart())));
+        sender.sendMessage(row("Restart", server.restart().name().toLowerCase(Locale.ROOT).replace('_', '-')));
         HiveServerStats load = stats.apply(i.getName());
         if (load != null) {
             // Paper reports a hair above 20 at full speed; show it like Paper's /tps does
-            sender.sendMessage(String.format("  TPS:       %.1f, %.1f, %.1f (1m, 5m, 15m), %.1f ms/tick",
-                    Math.min(load.tps1m(), 20), Math.min(load.tps5m(), 20), Math.min(load.tps15m(), 20), load.msptAverage()));
-            sender.sendMessage("  Players:   " + load.players() + "/" + load.maxPlayers());
+            sender.sendMessage(rowStyled("TPS", tps(load.tps1m()) + muted(", ") + tps(load.tps5m()) + muted(", ") + tps(load.tps15m())
+                    + muted(" (1m, 5m, 15m)  ") + value(String.format(Locale.ROOT, "%.1f", load.msptAverage())) + muted(" ms/tick")));
+            sender.sendMessage(rowStyled("Players", value(String.valueOf(load.players())) + muted("/" + load.maxPlayers())));
         }
         var loader = i.getClassLoader();
         if (loader != null) {
-            sender.sendMessage("  Threads:   " + i.threadCount() + ", classes: " + loader.definedClassCount() + " (Paper and its libraries; plugins' aren't counted)");
+            sender.sendMessage(rowStyled("Threads", value(String.valueOf(i.threadCount())) + muted(", classes ") + value(String.valueOf(loader.definedClassCount()))
+                    + muted("  (the server and its libraries; plugins' aren't counted)")));
         }
-        if (i.getExitStatus() != null && uptime == null) sender.sendMessage("  Last exit: " + i.getExitStatus());
+        if (i.getExitStatus() != null && uptime == null) sender.sendMessage(row("Last exit", String.valueOf(i.getExitStatus())));
+    }
+
+    private static String row(String label, String value) {
+        return rowStyled(label, value(value));
+    }
+
+    private static String rowStyled(String label, String styled) {
+        return "  " + pad(muted(label), 12) + styled;
     }
 
     @Contract(pure = true)

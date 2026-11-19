@@ -17,7 +17,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
@@ -42,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
 
 /**
  * One Paper server running inside this JVM, in its own {@link InstanceClassLoader}.
@@ -609,7 +610,7 @@ public final class ServerInstance {
             if (state != State.STARTING || classLoader != loader) return;
             setState(State.RUNNING);
         }
-        log.info("Instance {} is up after {}s", name, String.format("%.1f", (System.nanoTime() - startedAt) / 1e9));
+        log.info(success("{} is up after {}"), name(name), value(String.format("%.1fs", (System.nanoTime() - startedAt) / 1e9)));
     }
 
     /** Closes channels the instance locked and never closed; process exit would release those locks. */

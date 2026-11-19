@@ -8,6 +8,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 public final class PluginCommand extends HiveCommand {
 
     private final HivePluginManager plugins;
@@ -21,10 +23,11 @@ public final class PluginCommand extends HiveCommand {
     @Override
     public void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
         if (args.isEmpty() || (args.size() == 1 && args.getFirst().equals("list"))) {
-            if (plugins.plugins().isEmpty()) sender.sendMessage("no Hive plugins; put them in plugins/");
+            if (plugins.plugins().isEmpty()) sender.sendMessage(warning("No Hive plugins; put their jars in " + value("plugins/")));
             for (PaperhivePlugin p : plugins.plugins()) {
-                sender.sendMessage(String.format("%-20s %-12s %-9s%s", p.getPluginDescriptor().getName(), p.getPluginDescriptor().getVersion(),
-                        plugins.isEnabled(p) ? "enabled" : "disabled", plugins.hasServerHalf(p) ? "  + server half" : ""));
+                sender.sendMessage("  " + pad(name(p.getPluginDescriptor().getName()), 22) + pad(muted(p.getPluginDescriptor().getVersion()), 14)
+                        + pad(plugins.isEnabled(p) ? value("enabled") : muted("disabled"), 10)
+                        + (plugins.hasServerHalf(p) ? muted("+ server half") : ""));
             }
             return;
         }
@@ -34,15 +37,16 @@ public final class PluginCommand extends HiveCommand {
         }
         PaperhivePlugin plugin = plugins.findPlugin(args.get(1));
         if (plugin == null) {
-            sender.sendMessage("no Hive plugin named " + args.get(1));
+            sender.sendMessage(error("No Hive plugin named " + value(args.get(1))));
             return;
         }
         boolean enable = args.getFirst().equals("enable");
         if (enable) plugins.enablePlugin(plugin);
         else plugins.disablePlugin(plugin);
         String name = plugin.getPluginDescriptor().getName();
-        if (plugins.isEnabled(plugin) != enable) sender.sendMessage("Could not enable " + name + ", see the log");
-        else sender.sendMessage((enable ? "Enabled " : "Disabled ") + name + (plugins.hasServerHalf(plugin) ? "; its server half follows at each server's next start" : ""));
+        if (plugins.isEnabled(plugin) != enable) sender.sendMessage(error("Could not enable " + name(name) + muted(", see the log")));
+        else sender.sendMessage(success((enable ? "Enabled " : "Disabled ") + name(name)
+                + (plugins.hasServerHalf(plugin) ? muted("; its server half follows at each server's next start") : "")));
     }
 
     @Override

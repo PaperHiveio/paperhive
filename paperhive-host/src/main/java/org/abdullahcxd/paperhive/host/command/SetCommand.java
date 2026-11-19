@@ -11,6 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class SetCommand extends HiveCommand {
 
     private static final List<String> KEYS = List.of("Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
@@ -33,13 +35,13 @@ final class SetCommand extends HiveCommand {
         String value = args.size() > 2 ? String.join(" ", args.subList(2, args.size())) : null;
         ServerInstance instance = servers.instance(name);
         if (instance == null) {
-            sender.sendMessage("no server named " + name + "; known: " + servers.names());
+            sender.sendMessage(error("No server named " + value(name) + muted("; known: " + String.join(", ", servers.names()))));
             return;
         }
         try {
             servers.set(name, key, value);
         } catch (HiveConfig.HiveConfigException e) {
-            sender.sendMessage("Not changed: " + e.getMessage());
+            sender.sendMessage(error("Not changed: " + e.getMessage()));
             return;
         }
         sender.sendMessage((value == null ? "Reset " + key + " of " + name : "Set " + key + " of " + name + " to " + value)

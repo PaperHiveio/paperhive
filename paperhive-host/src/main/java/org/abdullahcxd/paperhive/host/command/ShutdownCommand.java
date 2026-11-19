@@ -7,6 +7,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class ShutdownCommand extends HiveCommand {
 
     private final ServerManager servers;
@@ -18,7 +20,7 @@ final class ShutdownCommand extends HiveCommand {
 
     @Override
     public void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
-        sender.sendMessage("Stopping every server and Paperhive");
+        sender.sendMessage(info("Stopping every server and Paperhive"));
         servers.shutdown();
     }
 

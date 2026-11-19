@@ -103,7 +103,7 @@ public final class InstanceClassLoader extends URLClassLoader {
         return c;
     }
 
-    private void definePackageFor(String className, Source source) {
+    private void definePackageFor(@NotNull String className, Source source) {
         int dot = className.lastIndexOf('.');
         if (dot < 0) return;
         String pkg = className.substring(0, dot);
@@ -154,7 +154,6 @@ public final class InstanceClassLoader extends URLClassLoader {
         return defined.get();
     }
 
-    /** Defines a host-generated class inside this loader, so it acts as instance code (see {@link JdbcDrivers}). */
     /** Whether this loader itself has loaded {@code name} (without loading it). */
     boolean hasLoaded(String name) {
         return findLoadedClass(name) != null;
@@ -168,7 +167,7 @@ public final class InstanceClassLoader extends URLClassLoader {
     }
 
     @Override
-    public @NotNull URL getResource(@NotNull String name) {
+    public @Nullable URL getResource(@NotNull String name) {
         URL url = findResource(name);
         return url != null ? url : getParent().getResource(name);
     }

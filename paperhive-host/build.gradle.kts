@@ -56,6 +56,8 @@ tasks.shadowJar {
     // log4j-api ships as a multi-release jar; without this its Java 9+ StackLocator is skipped
     manifest {
         attributes("Multi-Release" to "true", "Add-Opens" to addOpens.joinToString(" "),
+            // JLine talks to the terminal through the FFM API; without this Java 22+ warns at every start
+            "Enable-Native-Access" to "ALL-UNNAMED",
             "Implementation-Title" to "Paperhive", "Implementation-Version" to project.version.toString())
     }
 }

@@ -23,6 +23,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 public final class PaperhiveMain {
 
     private PaperhiveMain() {}
@@ -87,7 +89,7 @@ public final class PaperhiveMain {
             servers = new ServerManager(configFile, config, List.of(args), installs::pluginArgs, entry -> {
                 ServerInstance instance = new ServerInstance(entry.name(), entry.root(), entry.serverSoftware(),
                         installs.prepared(entry), gate, entry.options(host));
-                instance.addStateListener((i, from, to) -> log.info("Instance {}: {} -> {}", i.getName(), from, to));
+                instance.addStateListener((i, from, to) -> log.info("{} {} {} {}", name(i.getName()), state(from.name()), muted("->"), state(to.name())));
                 watch(instance, hive, plugins); // also for servers made later (create, set)
                 return instance;
             });
@@ -124,7 +126,7 @@ public final class PaperhiveMain {
         if (servers.instances().stream().noneMatch(ServerInstance::isActive)) {
             log.info("No server has Autostart: true; start one with `start <name>`");
         }
-        log.info("Type `help` for the Paperhive commands");
+        log.info("Type {} for the Paperhive commands", command("help"));
         console.start(commands, servers);
         // the host lives until `shutdown` or Ctrl+C, also while no server runs
         Thread.currentThread().join();

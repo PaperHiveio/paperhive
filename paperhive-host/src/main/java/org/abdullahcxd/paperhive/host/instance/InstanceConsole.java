@@ -2,6 +2,7 @@ package org.abdullahcxd.paperhive.host.instance;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
@@ -10,6 +11,8 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
 
 /**
  * One instance's console output: what the instance writes to its {@code System.out}/{@code System.err}
@@ -25,6 +28,8 @@ public final class InstanceConsole {
     }
 
     private final String name;
+    // "[lobby] " before each line it echoes to the host, the name in honey
+    private final String prefix;
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
     /**
      * -- SETTER --
@@ -37,6 +42,7 @@ public final class InstanceConsole {
 
     InstanceConsole(String name) {
         this.name = name;
+        this.prefix = muted("[") + name(name) + muted("] ");
     }
 
     public void addListener(@NotNull Listener listener) {
@@ -48,7 +54,8 @@ public final class InstanceConsole {
     }
 
     /** A fresh pair of sinks for one run of the instance; its {@code System.out}/{@code err} start out as these. */
-    Sinks newSinks() {
+    @Contract(" -> new")
+    @NotNull Sinks newSinks() {
         return new Sinks(new PrintStream(new LineSink(false), true, StandardCharsets.UTF_8),
                 new PrintStream(new LineSink(true), true, StandardCharsets.UTF_8));
     }
@@ -61,7 +68,7 @@ public final class InstanceConsole {
     }
 
     private void emit(String line, boolean error) {
-        if (echo) (error ? HiveIo.hostErr() : HiveIo.hostOut()).println("[" + name + "] " + line);
+        if (echo) (error ? HiveIo.hostErr() : HiveIo.hostOut()).println(prefix + line);
         for (Listener listener : listeners) {
             try {
                 listener.line(line, error);

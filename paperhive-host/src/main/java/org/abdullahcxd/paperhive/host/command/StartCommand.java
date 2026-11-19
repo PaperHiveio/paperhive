@@ -5,6 +5,8 @@ import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class StartCommand extends ServerCommand {
 
     StartCommand(ServerManager servers) {
@@ -14,8 +16,8 @@ final class StartCommand extends ServerCommand {
     @Override
     protected void execute(@NotNull HiveCommandSender sender, @NotNull ServerInstance instance) {
         String name = instance.getName();
-        if (instance.isActive()) sender.sendMessage(name + " is already " + instance.getState());
-        else sender.sendMessage(servers.start(name) ? "Starting " + name : "Could not start " + name + ", see the log");
+        if (instance.isActive()) sender.sendMessage(warning(name(name) + " is already " + state(instance.getState().name())));
+        else sender.sendMessage(servers.start(name) ? info("Starting " + name(name)) : error("Could not start " + name(name) + muted(", see the log")));
     }
 
 }

@@ -7,6 +7,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
 final class DetachCommand extends HiveCommand {
 
     private final ServerManager servers;
@@ -18,7 +20,7 @@ final class DetachCommand extends HiveCommand {
 
     @Override
     public void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
-        sender.sendMessage(sender.isConsole() && servers.detach() ? "Detached" : "not attached");
+        sender.sendMessage(sender.isConsole() && servers.detach() ? success("Detached") : warning("Not attached"));
     }
 
 }

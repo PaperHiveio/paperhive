@@ -1,19 +1,18 @@
 package org.abdullahcxd.paperhive.host.console;
 
+import org.abdullahcxd.paperhive.plugin.command.ConsoleText;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jline.reader.Candidate;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
-import org.jline.utils.AttributedString;
-import org.jline.utils.AttributedStringBuilder;
-import org.jline.utils.AttributedStyle;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.ByteArrayOutputStream;
@@ -76,15 +75,10 @@ public final class HiveConsole {
     }
 
     /**
-     * The Paperhive logo, a honeycomb, with the version; in colour where the terminal has it (JLine drops the colours
-     * for a plain one, e.g. a service's log).
+     * The Paperhive logo, a honeycomb, with the version; in colour where the terminal has it (the console drops the
+     * colours for a plain one, e.g. a service's log).
      */
     public void banner(@NotNull String version) {
-        AttributedStyle comb = AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW);
-        AttributedStyle bold = AttributedStyle.BOLD.foreground(AttributedStyle.YELLOW);
-        AttributedStyle name = AttributedStyle.BOLD.foreground(AttributedStyle.WHITE);
-        AttributedStyle dim = AttributedStyle.DEFAULT.foreground(AttributedStyle.BRIGHT + AttributedStyle.BLACK);
-        AttributedStyle link = AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN);
         String[] cells = {
                 "      __    __",
                 "   __/  \\__/  \\__",
@@ -92,18 +86,16 @@ public final class HiveConsole {
                 "  \\__/  \\__/  \\__/",
                 "     \\__/  \\__/",
         };
-        AttributedString[] text = {
-                null,
-                new AttributedStringBuilder().style(name).append("Paperhive").style(dim).append("  v" + version).toAttributedString(),
-                new AttributedStringBuilder().style(AttributedStyle.DEFAULT).append("One JVM, many Paper servers").toAttributedString(),
-                new AttributedStringBuilder().style(link).append("https://paperhive.abdullahcxd.org").toAttributedString(),
-                null,
+        String[] text = {
+                "",
+                ConsoleText.value("Paperhive") + ConsoleText.muted("  v" + version),
+                "One JVM, many Paper servers",
+                ConsoleText.command("https://paperhive.abdullahcxd.org"),
+                "",
         };
         StringBuilder out = new StringBuilder("\n");
         for (int i = 0; i < cells.length; i++) {
-            AttributedStringBuilder line = new AttributedStringBuilder().style(i % 2 == 0 ? comb : bold).append(cells[i]);
-            if (text[i] != null) line.append(" ".repeat(Math.max(1, 24 - cells[i].length()))).append(text[i]);
-            out.append(line.toAttributedString().toAnsi(terminal)).append('\n');
+            out.append(ConsoleText.pad(ConsoleText.name(cells[i]), 24)).append(text[i]).append('\n');
         }
         System.out.print(out);
     }
@@ -123,7 +115,7 @@ public final class HiveConsole {
             ServerInstance attached = servers.attached();
             String line;
             try {
-                line = reader.readLine(dumb ? "" : (attached == null ? "hive" : attached.getName()) + "> ");
+                line = reader.readLine(dumb ? "" : prompt(attached));
             } catch (UserInterruptException e) { // Ctrl+C at the prompt
                 line = "shutdown";
             } catch (EndOfFileException e) {
@@ -133,12 +125,18 @@ public final class HiveConsole {
         }
     }
 
+    /** {@code hive > }, or the attached server's name (in honey) while attached. */
+    private static String prompt(@Nullable ServerInstance attached) {
+        return attached == null ? ConsoleText.name("hive") + ConsoleText.muted(" > ")
+                : ConsoleText.name(attached.getName()) + ConsoleText.muted(" (attached) > ");
+    }
+
     private void handle(@NotNull String raw) {
         String line = raw.strip();
         if (line.isEmpty()) return;
         ServerInstance attached = servers.attached();
         if (attached != null && !line.equals("hive") && !line.startsWith("hive ")) {
-            if (!attached.dispatchCommand(line)) sender.sendMessage(attached.getName() + " isn't running");
+            if (!attached.dispatchCommand(line)) sender.sendMessage(ConsoleText.warning(ConsoleText.name(attached.getName()) + " isn't running"));
             return;
         }
         registry.execute(sender, line);
@@ -149,8 +147,11 @@ public final class HiveConsole {
         private final LineReader reader;
         private final ByteArrayOutputStream line = new ByteArrayOutputStream();
 
+        private final boolean plain;
+
         private AboveOutput(LineReader reader) {
             this.reader = reader;
+            this.plain = reader.getTerminal().getType().equals(Terminal.TYPE_DUMB); // "dumb-color" keeps them
         }
 
         @Override
@@ -161,7 +162,9 @@ public final class HiveConsole {
             }
             String text = line.toString(StandardCharsets.UTF_8);
             line.reset();
-            reader.printAbove(text.endsWith("\r") ? text.substring(0, text.length() - 1) : text);
+            if (text.endsWith("\r")) text = text.substring(0, text.length() - 1);
+            // JLine passes text through as is when it isn't reading a line; without a colour terminal, drop the colours
+            reader.printAbove(plain ? ConsoleText.strip(text) : text);
         }
     }
 

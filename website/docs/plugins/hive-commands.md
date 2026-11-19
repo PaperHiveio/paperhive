@@ -79,6 +79,29 @@ Hello, Steve!
 | `sendMessage(String)` | Reply. At the prompt it's printed; for a `hive` client it's sent back to that client. |
 | `isConsole()` | `true` at the host's own prompt, `false` for a client through the control socket. |
 
+## Colours
+
+Reply in the same style as Paperhive's own commands with `ConsoleText` (in `org.abdullahcxd.paperhive.plugin.command`).
+Paperhive drops the colours wherever they can't show: a plain terminal or a service's log, `hive` clients and the log
+file.
+
+```java
+import static org.abdullahcxd.paperhive.plugin.command.ConsoleText.*;
+
+sender.sendMessage(success("Greeted " + name(who)));                     // green »
+sender.sendMessage(error("No player named " + value(who)));              // red ×
+sender.sendMessage(warning(name(server) + " isn't running"));             // yellow !
+sender.sendMessage(info("Teleporting " + muted("(this takes a second)")));// honey »
+```
+
+| Method | Looks like |
+|---|---|
+| `success`, `error`, `warning`, `info` | A coloured `»`, `×`, `!` or `»` before the text. |
+| `name` | Bold honey, for server and plugin names. |
+| `value`, `command`, `muted` | Bold, cyan (something to type), gray. |
+| `state("RUNNING")`, `tps(19.8)` | Coloured by meaning: green when fine, yellow on the way or lagging, red when crashed or struggling. |
+| `pad(text, width)`, `strip(text)` | Line up columns (colours take no room); remove the colours. |
+
 ## Rules
 
 - Names and aliases are unique across the hive; `register` throws `IllegalArgumentException` if one is taken, and a
