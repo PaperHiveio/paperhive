@@ -1,0 +1,33 @@
+# ./gradlew build (compile + every unit test) on Linux and Windows.
+# The real-Paper tests (PaperInstanceIT, HivePluginLeakIT) are opt-in and need a Paper jar and the EULA; see docs/upgrading.md.
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build
+        shell: bash  # Git Bash on Windows, so the same ./gradlew works on both
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+      - name: Test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: '**/build/reports/tests/'

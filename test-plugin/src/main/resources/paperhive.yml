@@ -1,0 +1,6 @@
+name: ExamplePlugin
+description: An example plugin written for Paperhive
+version: 1.0.0
+main: org.example.ExampleHivePlugin
+# the server half: every server the plugin is enabled for loads it (no plugin.yml needed)
+server-main: org.example.ExampleServerPlugin

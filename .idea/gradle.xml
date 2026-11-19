@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/paperhive-gradle" name="paperhive-gradle">
+                <projects>
+                  <project path="$PROJECT_DIR$/paperhive-gradle" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/paperhive-api" />
+            <option value="$PROJECT_DIR$/paperhive-bridge" />
+            <option value="$PROJECT_DIR$/paperhive-constants" />
+            <option value="$PROJECT_DIR$/paperhive-downloader" />
+            <option value="$PROJECT_DIR$/paperhive-gradle" />
+            <option value="$PROJECT_DIR$/paperhive-host" />
+            <option value="$PROJECT_DIR$/paperhive-plugin" />
+            <option value="$PROJECT_DIR$/paperhive-sdk" />
+            <option value="$PROJECT_DIR$/paperhive-velocity" />
+            <option value="$PROJECT_DIR$/test-plugin" />
+          </set>
+        </option>
+        <option name="myGradleHome" value="C:\Gradle" />
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

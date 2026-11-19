@@ -1,0 +1,26 @@
+[versions]
+jackson = "3.0.0"
+asm = "9.8"
+shadow = "9.0.0"
+slf4j = "2.0.17"
+log4j = "2.25.2"
+jline = "3.30.6"
+paper-api = "1.21.11-R0.1-SNAPSHOT"
+velocity-api = "3.4.0-SNAPSHOT"
+
+[libraries]
+jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind" }
+jackson-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml" }
+asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
+asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+log4j-bom = { module = "org.apache.logging.log4j:log4j-bom", version.ref = "log4j" }
+log4j-core = { module = "org.apache.logging.log4j:log4j-core" }
+log4j-slf4j2-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl" }
+jline = { module = "org.jline:jline", version.ref = "jline" }
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity-api" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

@@ -1,0 +1,39 @@
+package org.abdullahcxd.paperhive.host.command;
+
+import org.abdullahcxd.paperhive.host.ServerManager;
+import org.abdullahcxd.paperhive.host.instance.ServerInstance;
+import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
+import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+
+/** A command taking one server name: checks it and completes it. */
+abstract class ServerCommand extends HiveCommand {
+
+    protected final ServerManager servers;
+
+    protected ServerCommand(ServerManager servers, String name, String description, String... aliases) {
+        super(name, "<name>", description, aliases);
+        this.servers = servers;
+    }
+
+    protected abstract void execute(HiveCommandSender sender, ServerInstance instance);
+
+    @Override
+    public final void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
+        if (args.size() != 1) {
+            sendUsage(sender);
+            return;
+        }
+        ServerInstance instance = servers.instance(args.getFirst());
+        if (instance == null) sender.sendMessage("no server named " + args.getFirst() + "; known: " + servers.names());
+        else execute(sender, instance);
+    }
+
+    @Override
+    public @NotNull List<String> complete(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
+        return args.size() == 1 ? servers.names() : List.of();
+    }
+
+}

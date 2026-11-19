@@ -1,0 +1,7 @@
+name: Paperhive
+version: ${version}
+main: org.abdullahcxd.paperhive.bridge.PaperhiveBridge
+description: Connects this server to its Paperhive host and runs the Hive plugins' server halves
+api-version: '1.21'
+# only API calls, nothing to remap
+paperweight-mappings-namespace: mojang
