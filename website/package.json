@@ -10,7 +10,7 @@
     "deploy": "docmd build && wrangler deploy"
   },
   "devDependencies": {
-    "@docmd/core": "0.9.9",
-    "wrangler": "4.157.0"
+    "@docmd/core": "0.10.0",
+    "wrangler": "4.163.0"
   }
 }
