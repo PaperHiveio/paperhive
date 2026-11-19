@@ -4,16 +4,17 @@
 
 Paperhive is in early development. Only the latest commit on the default branch receives security fixes.
 
-| Version          | Supported |
-|------------------|-----------|
-| `0.0.1-SNAPSHOT` (latest) | Yes |
-| Anything older   | No        |
+| Version                   | Supported |
+|---------------------------|-----------|
+| `0.0.1-SNAPSHOT` (latest) | Yes       |
+| Anything older            | No        |
 
 ## Reporting a vulnerability
 
 **Please don't open a public issue for security problems.**
 
-Report it privately through GitHub: the repository's **Security** tab, then **Report a vulnerability**. Include:
+Report it privately through GitHub: [**Report a vulnerability**](https://github.com/paperhiveio/paperhive/security/advisories/new)
+(the repository's **Security** tab). Include:
 
 - what is affected (module, command, config key, plugin API) and the Paperhive version or commit
 - steps to reproduce, or a proof of concept

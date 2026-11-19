@@ -45,9 +45,15 @@ bin/
 ### Paperhive runtime files ###
 logs/
 run/
+indexes/
 .paperhive-cache/
 paperhive.sock
 
 ### IntelliJ IDEA (personal) ###
 .idea/workspace.xml
 .idea/material_theme_project_new.xml
+
+### Documentation site (website/) ###
+website/node_modules/
+website/site/
+website/.wrangler/

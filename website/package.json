@@ -1,0 +1,16 @@
+{
+  "name": "paperhive-website",
+  "private": true,
+  "description": "The Paperhive documentation site (https://paperhive.abdullahcxd.org), built with docmd",
+  "license": "MIT",
+  "scripts": {
+    "dev": "docmd dev",
+    "build": "docmd build",
+    "validate": "docmd validate",
+    "deploy": "docmd build && wrangler deploy"
+  },
+  "devDependencies": {
+    "@docmd/core": "0.9.9",
+    "wrangler": "4.157.0"
+  }
+}

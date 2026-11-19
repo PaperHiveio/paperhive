@@ -1,0 +1,20 @@
+// The documentation site as a Cloudflare Worker serving static assets (no Worker code).
+// `npm run deploy` builds the site and uploads it; the custom domain below gets its DNS record and certificate
+// from Cloudflare automatically on deploy (abdullahcxd.org must be a zone in the same account).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "paperhive-docs",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site",
+    // docmd writes every page as <path>/index.html, and a 404.html at the root
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "paperhive.abdullahcxd.org", "custom_domain": true }
+  ],
+  // only the custom domain serves the site, not paperhive-docs.<account>.workers.dev
+  "workers_dev": false,
+  "preview_urls": false
+}

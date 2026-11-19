@@ -22,7 +22,7 @@ import java.util.Properties;
 /**
  * {@code id("org.abdullahcxd.paperhive.userdev")}: makes a project a Hive plugin with nothing else to set up.
  * <ul>
- *   <li>Java 21, and the repositories the SDK comes from (Maven Central, PaperMC, Maven local)</li>
+ *   <li>Java 21, and the repositories the SDK comes from (Maven Central, PaperMC, Paperhive's, Maven local)</li>
  *   <li>{@code compileOnly} on {@code paperhive-sdk} (the Hive API, Hive plugin API, server-half API and Paper API)</li>
  *   <li>{@code paperhive.yml} generated from {@code paperhive { main = ... }}</li>
  *   <li>{@code createHivePlugin}: writes a starter host half, server half and {@code paperhive.yml}</li>
@@ -32,6 +32,7 @@ import java.util.Properties;
 public final class PaperhiveUserdevPlugin implements Plugin<Project> {
 
     public static final String GROUP = "org.abdullahcxd.paperhive";
+    public static final String REPOSITORY = "https://maven.abdullahcxd.org/releases";
     public static final String HOST_CONFIGURATION = "paperhiveHost";
     public static final String TASK_GROUP = "paperhive";
 
@@ -53,6 +54,7 @@ public final class PaperhiveUserdevPlugin implements Plugin<Project> {
             if (!ext.getAddRepositories().get()) return;
             p.getRepositories().mavenCentral();
             p.getRepositories().maven(r -> r.setUrl("https://repo.papermc.io/repository/maven-public/"));
+            p.getRepositories().maven(r -> r.setUrl(REPOSITORY)); // the SDK and host releases
             p.getRepositories().mavenLocal(); // where `publishToMavenLocal` of Paperhive puts the SDK
         });
 

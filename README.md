@@ -6,6 +6,12 @@
 
 <p align="center">One JVM, many Paper servers.</p>
 
+<p align="center">
+  <a href="https://github.com/paperhiveio/paperhive/actions/workflows/build.yml"><img src="https://github.com/paperhiveio/paperhive/actions/workflows/build.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/paperhiveio/paperhive/releases"><img src="https://img.shields.io/github/v/release/paperhiveio/paperhive?include_prereleases" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+</p>
+
 Paperhive runs several [Paper](https://papermc.io) Minecraft servers inside a single JVM. It patches a stock Paper jar
 once, then starts each server in its own class loader with its own folder, console, logs and plugins, so the servers
 share one JIT-warmed runtime and one heap instead of one process each. Hive plugins span the whole hive: a host half
@@ -13,6 +19,8 @@ that sees every server, and a server half with full Bukkit/Paper access in each 
 
 > **Status:** early development (`0.0.1-SNAPSHOT`). Paper internals are pinned per release; see
 > [docs/upgrading.md](docs/upgrading.md).
+
+> **Note:** Includes AI-generated code by Claude.
 
 ## Features
 
@@ -32,10 +40,11 @@ that sees every server, and a server half with full Bukkit/Paper access in each 
 
 ## Running a hive
 
+Download `paperhive-<version>.jar` from the [latest release](https://github.com/paperhiveio/paperhive/releases), or
+build it with `./gradlew :paperhive-host:shadowJar` (`paperhive-host/build/libs/`). Then, in an empty folder:
+
 ```shell
-./gradlew :paperhive-host:shadowJar          # builds paperhive-host/build/libs/paperhive.jar
-mkdir my-hive && cd my-hive
-java -Xmx8G -Dcom.mojang.eula.agree=true -jar ../paperhive-host/build/libs/paperhive.jar
+java -Xmx8G -Dcom.mojang.eula.agree=true -jar paperhive-<version>.jar
 ```
 
 The first start writes a `paperhive.yml` with one server, downloads the Paper jar from the Paperhive mirror and
@@ -65,16 +74,23 @@ Every key and its default is listed in the comments of a freshly generated `pape
 
 ## Writing a Hive plugin
 
-The Gradle plugin sets up everything. Until it's on a public repository, publish it from this repo with
-`./gradlew publishToMavenLocal`, then:
+The Gradle plugin sets up everything. It and the SDK are published to `https://maven.abdullahcxd.org/releases`:
 
 ```kotlin
 // settings.gradle.kts
-pluginManagement { repositories { mavenLocal(); gradlePluginPortal() } }
+pluginManagement {
+    repositories {
+        maven("https://maven.abdullahcxd.org/releases")
+        gradlePluginPortal()
+    }
+}
 
-// build.gradle.kts
-plugins { id("org.abdullahcxd.paperhive.userdev") version "0.0.1-SNAPSHOT" }
+// build.gradle.kts: use the latest release's version
+plugins { id("org.abdullahcxd.paperhive.userdev") version "x.y.z" }
 ```
+
+To try unreleased changes, run `./gradlew publishToMavenLocal` in this repository, add `mavenLocal()` to the
+repositories above, and use the version from `gradle.properties`.
 
 ```shell
 ./gradlew createHivePlugin   # a starter host half, server half and paperhive.yml
@@ -98,6 +114,11 @@ See [`test-plugin`](test-plugin) for a fuller example, and "Gradle plugin (userd
 | `paperhive-downloader`, `paperhive-constants` | Fetching and verifying server jars from the mirror     |
 
 ## Documentation
+
+**[paperhive.abdullahcxd.org](https://paperhive.abdullahcxd.org)**: guides for running a hive and writing Hive plugins,
+and the API reference (source in [`website/`](website)).
+
+Design notes for contributors:
 
 - [Architecture](docs/architecture.md): how it works and why
 - [Tasks](docs/tasks.md): milestones and what was verified

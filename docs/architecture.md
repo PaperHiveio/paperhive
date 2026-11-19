@@ -174,16 +174,16 @@ subscriptions dropped -> the instance's loaders dropped.
 
 ## Gradle plugin (userdev)
 `paperhive-gradle` is a Gradle plugin for Hive plugin projects, like paperweight-userdev is for Paper plugins: no
-dependencies, repositories or descriptor to set up by hand. Until it's on a public repository, `./gradlew
-publishToMavenLocal` in this repo publishes it with the SDK (`paperhive-api`, `-plugin`, `-bridge`, `-sdk`) and the
-host jar. A plugin project then needs only:
+dependencies, repositories or descriptor to set up by hand. Releases publish it with the SDK (`paperhive-api`,
+`-plugin`, `-bridge`, `-sdk`) and the host jar to `https://maven.abdullahcxd.org/releases` (`./gradlew
+publishToMavenLocal` for local builds). A plugin project then needs only:
 ```kotlin
 // settings.gradle.kts
-pluginManagement { repositories { mavenLocal(); gradlePluginPortal() } }
+pluginManagement { repositories { maven("https://maven.abdullahcxd.org/releases"); gradlePluginPortal() } }
 // build.gradle.kts
-plugins { id("org.abdullahcxd.paperhive.userdev") version "0.0.1-SNAPSHOT" }
+plugins { id("org.abdullahcxd.paperhive.userdev") version "x.y.z" }
 ```
-It applies `java` with a Java 21 toolchain, adds Maven Central, PaperMC and Maven local (`paperhive {
+It applies `java` with a Java 21 toolchain, adds Maven Central, PaperMC, the Paperhive repository and Maven local (`paperhive {
 addRepositories = false }` when `settings.gradle.kts` declares repositories itself), and `compileOnly` on
 `paperhive-sdk` of `paperhive { paperhiveVersion }` (default: the plugin's own version). Tasks (group `paperhive`):
 - `createHivePlugin [--name=X] [--package=a.b]`: a host half, a server half and `paperhive.yml`; never overwrites.
@@ -196,8 +196,24 @@ addRepositories = false }` when `settings.gradle.kts` declares repositories itse
 
 `paperhive-gradle` is an included build (`pluginManagement { includeBuild(...) }`) so this build applies it too:
 `test-plugin` uses it like any plugin project. Inside the Paperhive build the plugin depends on the `:paperhive-sdk`
-and `:paperhive-host` projects instead of published artifacts. The root `build` and `publishToMavenLocal` tasks
-include it; the version comes from the root `gradle.properties`.
+and `:paperhive-host` projects instead of published artifacts. The root `build`, `publish` and `publishToMavenLocal`
+tasks include it; the version comes from the root `gradle.properties` (or `-Pversion`, as releases set it).
+
+## Documentation site
+The public docs at `https://paperhive.abdullahcxd.org` are Markdown in `website/docs/`, built with docmd
+(`website/docmd.config.json`: navigation, logo, theme). `cd website && npm install && npm run dev` previews them;
+`npm run validate` checks every internal link (write links as relative `.md` paths). It's served by a Cloudflare
+Worker with static assets only (`website/wrangler.jsonc`, Worker `paperhive-docs`): `npm run deploy` builds and
+uploads it, and the `custom_domain` route makes Cloudflare create the DNS record and certificate for
+`paperhive.abdullahcxd.org` itself. The `docs` workflow checks links, builds and dry-runs the deploy on every change,
+and deploys on pushes to `main`.
+
+## Releasing
+Push a tag `v<version>` (e.g. `v0.1.0`). The `release` workflow builds and tests with `-Pversion=<version>`,
+publishes every artifact to `https://maven.abdullahcxd.org/releases` (repository secrets `MAVEN_USERNAME` and
+`MAVEN_PASSWORD`), and creates a GitHub release with the host jar (`paperhive-<version>.jar`) and the Velocity plugin attached; a version
+with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish -Pversion=... -PabdullahcxdUsername=...
+-PabdullahcxdPassword=...`.
 
 ## Shared plugins and Velocity (M11)
 - **Shared plugin folders**: `SharedPlugins` lists extra folders of plugin jars per server, passed to Paper as

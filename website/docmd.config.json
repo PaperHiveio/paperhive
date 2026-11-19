@@ -1,0 +1,190 @@
+{
+  "title": "Paperhive",
+  "url": "https://paperhive.abdullahcxd.org",
+  "src": "docs",
+  "out": "site",
+  "engine": "js",
+  "logo": {
+    "light": "assets/images/logo.svg",
+    "dark": "assets/images/logo.svg",
+    "alt": "Paperhive"
+  },
+  "favicon": "assets/images/logo.svg",
+  "layout": {
+    "spa": true,
+    "header": {
+      "enabled": true
+    },
+    "sidebar": {
+      "collapsible": true,
+      "defaultCollapsed": false
+    },
+    "optionsMenu": {
+      "position": "sidebar-top",
+      "components": {
+        "search": true,
+        "themeSwitch": true
+      }
+    },
+    "footer": {
+      "style": "minimal",
+      "content": "© 2026 Paperhive · MIT License · Not affiliated with PaperMC or Mojang.",
+      "branding": true
+    }
+  },
+  "theme": {
+    "name": "default",
+    "appearance": "system",
+    "codeHighlight": true
+  },
+  "minify": true,
+  "autoTitleFromH1": true,
+  "copyCode": true,
+  "pageNavigation": true,
+  "editLink": {
+    "enabled": true,
+    "baseUrl": "https://github.com/paperhiveio/paperhive/edit/main/website/docs",
+    "text": "Edit this page on GitHub"
+  },
+  "navigation": [
+    {
+      "title": "Introduction",
+      "path": "/",
+      "icon": "home"
+    },
+    {
+      "title": "Getting started",
+      "icon": "rocket",
+      "children": [
+        {
+          "title": "Installation",
+          "path": "/getting-started/installation/",
+          "icon": "download"
+        },
+        {
+          "title": "Your first hive",
+          "path": "/getting-started/first-hive/",
+          "icon": "play"
+        }
+      ]
+    },
+    {
+      "title": "Running a hive",
+      "icon": "server",
+      "children": [
+        {
+          "title": "Configuration",
+          "path": "/guide/configuration/",
+          "icon": "settings"
+        },
+        {
+          "title": "Console and commands",
+          "path": "/guide/commands/",
+          "icon": "terminal"
+        },
+        {
+          "title": "Shared plugins",
+          "path": "/guide/shared-plugins/",
+          "icon": "folder-tree"
+        },
+        {
+          "title": "Velocity",
+          "path": "/guide/velocity/",
+          "icon": "network"
+        },
+        {
+          "title": "Memory and crashes",
+          "path": "/guide/memory-and-crashes/",
+          "icon": "heart-pulse"
+        }
+      ]
+    },
+    {
+      "title": "Writing plugins",
+      "icon": "puzzle",
+      "children": [
+        {
+          "title": "How Hive plugins work",
+          "path": "/plugins/overview/",
+          "icon": "layers"
+        },
+        {
+          "title": "Gradle plugin",
+          "path": "/plugins/gradle-plugin/",
+          "icon": "package"
+        },
+        {
+          "title": "The host half",
+          "path": "/plugins/host-half/",
+          "icon": "cpu"
+        },
+        {
+          "title": "The server half",
+          "path": "/plugins/server-half/",
+          "icon": "blocks"
+        },
+        {
+          "title": "Events",
+          "path": "/plugins/events/",
+          "icon": "zap"
+        },
+        {
+          "title": "Messaging",
+          "path": "/plugins/messaging/",
+          "icon": "message-square"
+        },
+        {
+          "title": "Hive commands",
+          "path": "/plugins/hive-commands/",
+          "icon": "square-terminal"
+        }
+      ]
+    },
+    {
+      "title": "Reference",
+      "icon": "book-open",
+      "children": [
+        {
+          "title": "Hive API",
+          "path": "/reference/hive-api/",
+          "icon": "braces"
+        },
+        {
+          "title": "paperhive.yml (host)",
+          "path": "/reference/host-config/",
+          "icon": "file-cog"
+        },
+        {
+          "title": "paperhive.yml (plugin)",
+          "path": "/reference/plugin-descriptor/",
+          "icon": "file-code"
+        }
+      ]
+    },
+    {
+      "title": "Troubleshooting",
+      "path": "/troubleshooting/",
+      "icon": "life-buoy"
+    },
+    {
+      "title": "Contributing",
+      "path": "/contributing/",
+      "icon": "git-pull-request"
+    },
+    {
+      "title": "GitHub",
+      "path": "https://github.com/paperhiveio/paperhive",
+      "icon": "github",
+      "external": true
+    }
+  ],
+  "plugins": {
+    "seo": {
+      "defaultDescription": "Paperhive runs many Paper Minecraft servers in one JVM. Guides for server owners and plugin developers."
+    },
+    "ai": false
+  },
+  "markdown": {
+    "breaks": false
+  }
+}

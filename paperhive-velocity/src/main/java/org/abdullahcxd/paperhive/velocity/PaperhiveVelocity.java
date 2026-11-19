@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * unregisters them when they stop. Asks the host through its control socket ({@code paperhive.sock}) every few
  * seconds. Players still need a way in: a {@code try} entry or forced host in {@code velocity.toml} naming the server.
  */
-@Plugin(id = "paperhive", name = "Paperhive", version = "0.0.1-SNAPSHOT",
+@Plugin(id = "paperhive", name = "Paperhive", version = BuildInfo.VERSION,
         description = "Registers a Paperhive host's servers with this proxy", authors = {"Paperhive"})
 public final class PaperhiveVelocity {
 
