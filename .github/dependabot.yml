@@ -1,15 +1,17 @@
-# Weekly update PRs for Gradle dependencies and GitHub Actions.
-# Paper and Velocity API versions are pinned per release on purpose (docs/upgrading.md): don't merge those blindly.
+# Weekly update PRs for Gradle and npm dependencies and GitHub Actions.
 version: 2
 updates:
   - package-ecosystem: gradle
     directories: ["/", "/paperhive-gradle"]
     schedule:
       interval: weekly
+    # Paper and Velocity are pinned per Paperhive release and upgraded by hand (docs/upgrading.md)
+    ignore:
+      - dependency-name: "io.papermc.paper:paper-api"
+      - dependency-name: "com.velocitypowered:velocity-api"
     groups:
       gradle:
         patterns: ["*"]
-        exclude-patterns: ["io.papermc.paper:*", "com.velocitypowered:*"]
 
   - package-ecosystem: npm
     directory: /website
