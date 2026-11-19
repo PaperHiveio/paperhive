@@ -12,9 +12,12 @@ publishing {
 
 // the bridge plugin travels inside the host jar as a resource (not on the host's classpath); each server loads it
 val bridge by configurations.creating { isTransitive = false }
+// the Velocity plugin travels the same way; Paperhive puts it into proxies that run inside the hive
+val velocityPlugin by configurations.creating { isTransitive = false }
 
 dependencies {
     bridge(project(":paperhive-bridge"))
+    velocityPlugin(project(":paperhive-velocity"))
     implementation(project(":paperhive-api"))
     implementation(project(":paperhive-constants"))
     implementation(project(":paperhive-downloader"))
@@ -39,6 +42,7 @@ val addOpens = listOf("java.base/java.lang", "java.base/java.util.concurrent")
 
 tasks.processResources {
     from(bridge) { rename { "paperhive-bridge.jar" } }
+    from(velocityPlugin) { rename { "paperhive-velocity.jar" } }
 }
 
 application {

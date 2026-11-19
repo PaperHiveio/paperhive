@@ -60,7 +60,23 @@ explains how to use them.
 
 ## Servers
 
-Each entry under `Servers` is one Paper server.
+Each entry under `Servers` is one server: Paper unless it says otherwise.
+
+### Software and Version
+
+Every server runs the top-level `Software` and `Version` unless it sets its own. A hive can mix Paper servers with a
+Velocity proxy:
+
+```yaml
+Servers:
+  - Name: lobby
+    Port: 25566
+  - Name: proxy
+    Port: 25565
+    Software: velocitymc   # Version defaults to the newest supported Velocity
+```
+
+See [Velocity](velocity.md#inside-the-hive) for what the proxy does there.
 
 ### Name and Port
 

@@ -18,8 +18,8 @@ see [paperhive.yml (plugin)](plugin-descriptor.md).
 | Key | Type | Default | |
 |---|---|---|---|
 | `ConfigurationVersion` | integer | — | The file format version. Written and upgraded by Paperhive; don't change it. |
-| `Software` | text | `papermc` | The server software every server runs. |
-| `Version` | text | `1.21.11` | The Minecraft version every server runs. Only supported versions are accepted. |
+| `Software` | `papermc`/`velocitymc` | `papermc` | What servers run unless they set their own. |
+| `Version` | text | `1.21.11` | The version of `Software` servers run unless they set their own. Only supported versions are accepted. |
 | `Host` | section | all defaults | Settings of Paperhive itself, below. |
 | `Servers` | list | — | **Required**, at least one server. |
 
@@ -47,6 +47,8 @@ Each item:
 |---|---|---|---|
 | `Name` | text | — | **Required.** Letters, digits, `-`, `_`; up to 32. Unique, ignoring case. |
 | `Port` | 1-65535 | — | **Required.** Unique. |
+| `Software` | `papermc`/`velocitymc` | the top-level `Software` | What this server runs. |
+| `Version` | text | the top-level `Version` if the software matches, else that software's newest | The version it runs (`4.3.1-45` for Velocity). |
 | `IP` | text | all addresses | The address to listen on (Paper's `--host`). |
 | `Root` | path | `instances/<Name>` | The server's folder. Unique. |
 | `Plugins` | path | `<Root>/plugins` | Its Paper plugins folder. |
@@ -55,6 +57,9 @@ Each item:
 | `Restart` | `never`/`on-crash` | `never` | Start it again after a crash. |
 | `DisabledHivePlugins` | list of text | `[]` | Hive plugins not to load on this server. |
 | `SharedPlugins` | list of paths | `[]` | Extra folders of Paper plugin jars ([Shared plugins](../guide/shared-plugins.md)). |
+
+A `velocitymc` server can't set `IP`, `Plugins`, `SharedPlugins` or `DisabledHivePlugins` (they're Paper's); that's a
+validation error. Velocity 4.3 needs Java 25 on the host.
 
 Paths are relative to the hive folder unless absolute. Server changes apply at that server's next start.
 

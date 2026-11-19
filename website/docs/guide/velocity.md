@@ -8,7 +8,24 @@ description: "Register the hive's servers with a Velocity proxy automatically."
 The Paperhive Velocity plugin keeps your proxy's server list in sync with the hive: when a server starts it's added to
 Velocity, and when it stops it's removed. No more editing `velocity.toml` every time you create a server.
 
-## Install
+## Inside the hive
+
+The simplest setup: let Paperhive run the proxy as one of its servers.
+
+```yaml
+Servers:
+  - Name: proxy
+    Port: 25565
+    Software: velocitymc
+```
+
+Paperhive downloads Velocity, puts this plugin into the proxy's `plugins/` folder and starts it with the rest. The
+plugin reads the hive's servers straight from Paperhive (no socket, no config) and registers every Paper server while
+it's `RUNNING`. Run proxy commands from Paperhive's console as `proxy <command>`, e.g. `proxy glist`.
+
+Velocity 4.3 needs Java 25: start Paperhive with Java 25 or newer, or it refuses with a clear message.
+
+## On its own
 
 ::: steps
 

@@ -1,7 +1,11 @@
 package org.abdullahcxd.paperhive.velocity;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import com.google.inject.Inject;
+import org.abdullahcxd.paperhive.api.HiveServer;
+import org.abdullahcxd.paperhive.api.Paperhive;
+import org.abdullahcxd.paperhive.api.internal.BridgeHooks;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
@@ -28,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * Registers the servers of a Paperhive host on the same machine with this proxy while they're {@code RUNNING}, and
@@ -53,6 +58,8 @@ public final class PaperhiveVelocity {
     private Path socket;
     private ServerSync sync;
     private boolean reachable = true;
+    // inside a hive: the servers straight from the Hive API (same JVM), instead of the host's socket
+    private @Nullable Supplier<List<String>> hiveListing;
 
     @Inject
     public PaperhiveVelocity(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
@@ -89,15 +96,40 @@ public final class PaperhiveVelocity {
                 proxy.getServer(name).ifPresent(s -> proxy.unregisterServer(s.getServerInfo()));
             }
         }, config.getProperty("host", "127.0.0.1"));
+        joinHive();
         long interval = Long.parseLong(config.getProperty("interval", "2"));
         proxy.getScheduler().buildTask(this, this::poll).repeat(interval, TimeUnit.SECONDS).schedule();
-        logger.info("Following the Paperhive host at {}", socket);
+        if (hiveListing == null) logger.info("Following the Paperhive host at {}", socket);
+    }
+
+    /**
+     * Inside a Paperhive hive (the proxy is one of its servers): never register this proxy with itself, and run the
+     * console commands Paperhive sends it ({@code <proxy> <command>}, {@code attach}). Outside one there's no Paperhive
+     * API to find, and nothing changes.
+     */
+    private void joinHive() {
+        try {
+            HiveServer self = Paperhive.getHive().getCurrentServer();
+            if (self == null) return;
+            sync.setSelf(self.getName());
+            hiveListing = () -> Paperhive.getHive().getServers().stream()
+                    .map(s -> s.getName() + "\t" + s.getState() + "\t" + s.getPort() + "\t" + s.getSoftware())
+                    .toList();
+            ((BridgeHooks) Paperhive.getHive()).consoleEnabled(command -> {
+                proxy.getCommandManager().executeAsync(proxy.getConsoleCommandSource(), command);
+                return true;
+            });
+            logger.info("Running inside the hive as {}; its console commands reach this proxy", self.getName());
+        } catch (LinkageError | IllegalStateException standalone) {
+            // not in a hive: the API isn't there (NoClassDefFoundError) or not set up
+        }
     }
 
     private void poll() {
         List<String> changes;
         try {
-            changes = sync.sync(query(socket, "list --tsv"));
+            Supplier<List<String>> listing = hiveListing;
+            changes = sync.sync(listing != null ? listing.get() : query(socket, "list --tsv"));
             if (!reachable) logger.info("Reached the Paperhive host at {} again", socket);
             reachable = true;
         } catch (IOException e) {

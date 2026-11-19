@@ -96,7 +96,7 @@ public final class InstanceClassLoader extends URLClassLoader {
         } catch (IOException e) {
             throw new ClassNotFoundException(name, e);
         }
-        bytes = InstanceTransformer.transform(bytes);
+        bytes = InstanceTransformer.transform(bytes, instance == null ? List.of() : instance.getSoftware().patches());
         definePackageFor(name, source);
         Class<?> c = defineClass(name, bytes, 0, bytes.length, source.domain());
         defined.incrementAndGet();

@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.command;
 
+import org.abdullahcxd.paperhive.downloader.MCSoftware;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
@@ -7,11 +8,12 @@ import org.abdullahcxd.paperhive.plugin.command.HiveCommand;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.List;
 
 final class SetCommand extends HiveCommand {
 
-    private static final List<String> KEYS = List.of("Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
+    private static final List<String> KEYS = List.of("Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
 
     private final ServerManager servers;
 
@@ -52,6 +54,7 @@ final class SetCommand extends HiveCommand {
             case 3 -> switch (args.get(1)) {
                 case "Autostart" -> List.of("true", "false");
                 case "Restart" -> List.of("never", "on-crash");
+                case "Software" -> Arrays.stream(MCSoftware.values()).map(MCSoftware::getName).toList();
                 default -> List.of();
             };
             default -> List.of();

@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.velocity;
 
+import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
 import java.net.InetSocketAddress;
@@ -27,6 +28,7 @@ final class ServerSync {
 
     private final Proxy proxy;
     private final String host;
+    private volatile @Nullable String self;
     private final Map<String, InetSocketAddress> ours = new LinkedHashMap<>();
     private final Set<String> warned = new HashSet<>();
 
@@ -36,15 +38,22 @@ final class ServerSync {
         this.host = host;
     }
 
+    /** The hive's name for this proxy, when it runs inside the hive: never registered with itself. */
+    void setSelf(@Nullable String name) {
+        self = name;
+    }
+
     /**
-     * @param listing {@code list --tsv} from the host: {@code name<TAB>state<TAB>port} per line
+     * @param listing {@code list --tsv} from the host: {@code name<TAB>state<TAB>port[<TAB>software]} per line; other
+     *                proxies ({@code velocitymc}) and this proxy itself are left out
      * @return what changed, to log
      */
     synchronized @NonNull List<String> sync(@NonNull List<String> listing) {
         Map<String, InetSocketAddress> wanted = new LinkedHashMap<>();
         for (String line : listing) {
             String[] f = line.split("\t");
-            if (f.length != 3 || !f[1].equals("RUNNING")) continue;
+            if (f.length < 3 || !f[1].equals("RUNNING") || f[0].equals(self)) continue;
+            if (f.length >= 4 && f[3].equals("velocitymc")) continue; // a proxy, not a server to send players to
             try {
                 wanted.put(f[0], InetSocketAddress.createUnresolved(host, Integer.parseInt(f[2])));
             } catch (NumberFormatException noPort) {

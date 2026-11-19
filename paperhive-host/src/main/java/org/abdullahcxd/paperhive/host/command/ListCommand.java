@@ -17,15 +17,17 @@ final class ListCommand extends HiveCommand {
     private final Function<String, @Nullable HiveServerStats> stats;
 
     ListCommand(ServerManager servers, Function<String, @Nullable HiveServerStats> stats) {
-        super("list", "[--tsv]", "every server with its state, port, players and TPS (--tsv: name, state, port per line, for tools)", "ls");
+        super("list", "[--tsv]", "every server with its state, port, players and TPS (--tsv: name, state, port, software per line, for tools)", "ls");
         this.servers = servers;
         this.stats = stats;
     }
 
     @Override
     public void execute(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
-        if (args.equals(List.of("--tsv"))) { // stable format: the Velocity plugin reads it
-            for (ServerInstance i : servers.instances()) sender.sendMessage(i.getName() + "\t" + i.getState() + "\t" + i.getOptions().port());
+        if (args.equals(List.of("--tsv"))) { // stable format: the Velocity plugin reads it (columns are only ever added)
+            for (ServerInstance i : servers.instances()) {
+                sender.sendMessage(i.getName() + "\t" + i.getState() + "\t" + i.getOptions().port() + "\t" + i.getSoftware().id().getName());
+            }
             return;
         }
         if (!args.isEmpty()) {

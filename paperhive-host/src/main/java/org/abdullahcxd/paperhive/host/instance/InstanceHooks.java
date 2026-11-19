@@ -8,6 +8,7 @@ import jdk.jfr.Event;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.FlightRecorderListener;
 
+import java.util.List;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -183,8 +184,8 @@ public final class InstanceHooks {
 
     private static Class<?> define(ClassLoader loader, String name, byte[] b, int off, int len, @Nullable ProtectionDomain pd) {
         byte[] bytes = off == 0 && len == b.length ? b : Arrays.copyOfRange(b, off, off + len);
-        bytes = InstanceTransformer.transform(bytes);
         ServerInstance instance = instanceOf(loader);
+        bytes = InstanceTransformer.transform(bytes, instance == null ? List.of() : instance.getSoftware().patches());
         if (instance != null && !(loader instanceof InstanceClassLoader)) instance.trackDefiningLoader(loader);
         try {
             return (Class<?>) DEFINE_CLASS.invokeExact(loader, name, bytes, 0, bytes.length, pd);

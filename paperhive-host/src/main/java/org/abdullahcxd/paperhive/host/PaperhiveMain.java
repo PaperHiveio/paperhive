@@ -5,7 +5,6 @@ import org.abdullahcxd.paperhive.host.console.HiveConsole;
 import org.abdullahcxd.paperhive.host.hive.HostHive;
 import org.abdullahcxd.paperhive.host.server.MemoryWatch;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
-import org.abdullahcxd.paperhive.downloader.PaperhiveDownloader;
 import org.abdullahcxd.paperhive.api.HiveServer;
 import org.abdullahcxd.paperhive.api.Paperhive;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
@@ -13,18 +12,13 @@ import org.abdullahcxd.paperhive.host.command.PluginCommand;
 import org.abdullahcxd.paperhive.host.plugin.HivePluginManager;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ApiGateLoader;
+import org.abdullahcxd.paperhive.host.software.SoftwareInstalls;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
-import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
-import org.abdullahcxd.paperhive.host.software.PreparedServer;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -68,9 +62,8 @@ public final class PaperhiveMain {
             return;
         }
         HiveConfig.Host host = config.host();
-        Path paperJar = PaperhiveDownloader.fetch(config.software(), config.version(), host.cache(), host.mirror());
-        // not closed: the instances run from it for the rest of the JVM's life, and the OS drops the lock on exit
-        PreparedServer server = PaperclipCache.prepare(paperJar, host.paperclipCache());
+        // each server's software and version, downloaded and prepared once per version
+        SoftwareInstalls installs = new SoftwareInstalls(host.cache(), host.mirror());
 
         HostHive hive = new HostHive();
         Paperhive.setHive(hive);
@@ -85,17 +78,24 @@ public final class PaperhiveMain {
                 log.error("Cannot load Hive plugin {}: {}", jar, e.getMessage());
             }
         }
-        Path bridge = extractBridge(host.cache(), log);
 
         ApiGateLoader gate = new ApiGateLoader(PaperhiveMain.class.getClassLoader());
-        // the bridge loads the Hive plugins' server halves itself (it asks the Hive which)
-        List<String> bridgeArgs = bridge == null ? List.of() : List.of("--add-plugin", bridge.toString());
-        ServerManager servers = new ServerManager(configFile, config, List.of(args), entry -> bridgeArgs, entry -> {
-            ServerInstance instance = new ServerInstance(entry.name(), entry.root(), server, gate, entry.options(host));
-            instance.addStateListener((i, from, to) -> log.info("Instance {}: {} -> {}", i.getName(), from, to));
-            watch(instance, hive, plugins); // also for servers made later (create, set)
-            return instance;
-        });
+        // Paperhive's plugin goes into every server at each start (in Paper, the bridge loads the Hive plugins' server
+        // halves itself: it asks the Hive which)
+        ServerManager servers;
+        try {
+            servers = new ServerManager(configFile, config, List.of(args), installs::pluginArgs, entry -> {
+                ServerInstance instance = new ServerInstance(entry.name(), entry.root(), entry.serverSoftware(),
+                        installs.prepared(entry), gate, entry.options(host));
+                instance.addStateListener((i, from, to) -> log.info("Instance {}: {} -> {}", i.getName(), from, to));
+                watch(instance, hive, plugins); // also for servers made later (create, set)
+                return instance;
+            });
+        } catch (RuntimeException e) {
+            log.error("Cannot set up the servers: {}", e.getMessage(), e);
+            System.exit(1);
+            return;
+        }
         hive.init(servers, plugins::serverHalves);
         servers.setStartGuard(hive::allowStart);
         CommandRegistry commands = CommandRegistry.withBuiltins(servers, name -> {
@@ -136,25 +136,6 @@ public final class PaperhiveMain {
             hive.stateChanged(i, from, to);
             if (to == ServerInstance.State.RUNNING) plugins.serverStarted(hive.config(i.getName()), hive.handle(i.getName()));
         });
-    }
-
-    /** The bridge plugin from inside this jar, written to the cache when it changed; null if this build has none. */
-    private static @Nullable Path extractBridge(Path cache, Logger log) {
-        try (InputStream in = PaperhiveMain.class.getResourceAsStream("/paperhive-bridge.jar")) {
-            if (in == null) {
-                log.warn("This build has no paperhive-bridge.jar; servers run without Paperhive's plugin (no Hive plugin server halves)");
-                return null;
-            }
-            byte[] bytes = in.readAllBytes();
-            Path target = cache.resolve("paperhive-bridge.jar").toAbsolutePath();
-            if (!Files.exists(target) || !Arrays.equals(Files.readAllBytes(target), bytes)) {
-                Files.createDirectories(target.getParent());
-                Files.write(target, bytes);
-            }
-            return target;
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot write the bridge plugin to " + cache, e);
-        }
     }
 
 }

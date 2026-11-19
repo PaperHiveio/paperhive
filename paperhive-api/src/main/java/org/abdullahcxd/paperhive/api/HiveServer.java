@@ -12,6 +12,9 @@ public interface HiveServer {
 
     int getPort();
 
+    /** What it runs, as {@code paperhive.yml} names it: {@code papermc}, {@code velocitymc}. */
+    @NotNull String getSoftware();
+
     @NotNull HiveServerState getState();
 
     /** Its folder. */

@@ -26,7 +26,7 @@ class HiveConfigTest {
         assertEquals(MCSoftware.PAPERMC, config.software());
         assertEquals(MCVersion.MC1_21_11, config.version());
         HiveConfig.Server main = config.servers().getFirst();
-        assertEquals(new HiveConfig.Server("main", 25565, null, Path.of("instances", "main"), null, List.of(), true,
+        assertEquals(new HiveConfig.Server("main", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25565, null, Path.of("instances", "main"), null, List.of(), true,
                 ServerInstance.RestartPolicy.NEVER, List.of(), List.of()), main);
     }
 
@@ -51,7 +51,7 @@ class HiveConfigTest {
                     SharedPlugins: [shared/all, shared/survival]
                 """);
         HiveConfig.Server survival = HiveConfig.load(file).servers().get(1);
-        assertEquals(new HiveConfig.Server("survival", 25566, "127.0.0.1", Path.of("servers", "survival"), Path.of("shared", "plugins"),
+        assertEquals(new HiveConfig.Server("survival", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, "127.0.0.1", Path.of("servers", "survival"), Path.of("shared", "plugins"),
                 List.of("--nojline", "-Dfoo"), false, ServerInstance.RestartPolicy.ON_CRASH, List.of("Chat"),
                 List.of(Path.of("shared", "all"), Path.of("shared", "survival"))), survival);
         ServerInstance.Options options = survival.options();
@@ -151,7 +151,7 @@ class HiveConfigTest {
                     Restart: always
                     Args: --x
                 """);
-        for (String expected : List.of("Software: unknown 'spigot'", "Version: unknown '1.8'", "the name A is used twice (as a)",
+        for (String expected : List.of("Software: unknown 'spigot'", "Version: unknown papermc version '1.8'", "the name A is used twice (as a)",
                 "a and A both use Port 25565", "may only use letters", "Port: expected 1-65535", "a and d share the folder",
                 "Autostart: expected true or false", "Restart: expected never or on-crash", "Args: expected a list")) {
             assertTrue(message.contains(expected), expected + " missing from:\n" + message);
@@ -190,7 +190,7 @@ class HiveConfigTest {
         Path file = tmp.resolve(HiveConfig.FILE_NAME);
         HiveConfig.load(file); // the commented default
         HiveConfig config = HiveConfig.addServer(file, "lobby", 25566);
-        assertEquals(new HiveConfig.Server("lobby", 25566, null, Path.of("instances", "lobby"), null, List.of(), true,
+        assertEquals(new HiveConfig.Server("lobby", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, null, Path.of("instances", "lobby"), null, List.of(), true,
                 ServerInstance.RestartPolicy.NEVER, List.of(), List.of()), config.servers().get(1));
         String text = Files.readString(file);
         assertTrue(text.contains("# Restart: never") && text.endsWith("  - Name: lobby\n    Port: 25566\n"), text);
@@ -287,6 +287,52 @@ class HiveConfigTest {
 
     private Path write(String yaml) throws Exception {
         return Files.writeString(tmp.resolve(HiveConfig.FILE_NAME), yaml);
+    }
+
+    @Test
+    void serversCanRunOtherSoftware() throws Exception {
+        Path file = write("""
+                ConfigurationVersion: 1
+                Software: papermc
+                Version: 1.21.11
+                Servers:
+                  - Name: lobby
+                    Port: 25565
+                    IP: 127.0.0.1
+                  - Name: proxy
+                    Port: 25577
+                    Software: velocitymc
+                    Args: [--haproxy, "false"]
+                """);
+        HiveConfig config = HiveConfig.load(file);
+        HiveConfig.Server lobby = config.servers().get(0), proxy = config.servers().get(1);
+        assertEquals(MCSoftware.PAPERMC, lobby.software());
+        assertEquals(MCVersion.MC1_21_11, lobby.version());
+        assertEquals(MCSoftware.VELOCITYMC, proxy.software());
+        assertEquals(MCVersion.VELOCITY_4_3_1_45, proxy.version(), "another software without a Version: its newest");
+        assertEquals(List.of("--host", "127.0.0.1"), lobby.options().args(), "Paper turns IP into --host");
+        assertEquals(List.of("--haproxy", "false"), proxy.options().args());
+
+        String message = problems("""
+                ConfigurationVersion: 1
+                Servers:
+                  - Name: proxy
+                    Port: 25577
+                    Software: velocitymc
+                    Version: 1.21.11
+                    IP: 0.0.0.0
+                    SharedPlugins: [shared]
+                  - Name: odd
+                    Port: 25578
+                    Software: bungeecord
+                """);
+        for (String expected : List.of("(proxy).Version: unknown velocitymc version '1.21.11', supported: [4.3.1-45]",
+                "(proxy).IP: not for Velocity servers", "(proxy).SharedPlugins: not for Velocity servers",
+                "(odd).Software: unknown 'bungeecord'")) {
+            assertTrue(message.contains(expected), expected + " missing from:\n" + message);
+        }
+        assertTrue(problems("ConfigurationVersion: 1\nSoftware: velocitymc\nVersion: 1.21.11\nServers: [{Name: a, Port: 1}]\n")
+                .contains("Version: unknown velocitymc version '1.21.11'"), "the hive's Version must match its Software too");
     }
 
 }

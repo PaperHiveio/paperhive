@@ -38,14 +38,14 @@ Paperhive caches this per jar in `<cache>/<sha256 prefix>/` (`PaperclipCache`):
   transform list becomes large and fragile.
 
 ## Transform list (grows as things break)
-| Target | Why | Replacement |
-|---|---|---|
-| `System.exit`, `Runtime.exit/halt` | would kill every instance | signal "stop this instance" |
-| `System.in/out/err` | process-global | per-instance slots (`HiveIo`) + thread-routing JVM-wide streams |
-| `java.util.logging` `Logger.getLogger`, `LogManager.*` | one JVM-wide logger tree | per-instance namespace (`HiveJul`) |
-| `java.io.File*` constructors | relative paths use host cwd | path argument made absolute against the instance root (`HiveFs`) |
-| `Path.of`, `Paths.get`, `FileSystems.getDefault().getPath` | same | static helpers |
-| shutdown hooks | run at JVM end, not instance stop | capture and run on instance stop |
+| Target                                                     | Why                               | Replacement                                                      |
+|------------------------------------------------------------|-----------------------------------|------------------------------------------------------------------|
+| `System.exit`, `Runtime.exit/halt`                         | would kill every instance         | signal "stop this instance"                                      |
+| `System.in/out/err`                                        | process-global                    | per-instance slots (`HiveIo`) + thread-routing JVM-wide streams  |
+| `java.util.logging` `Logger.getLogger`, `LogManager.*`     | one JVM-wide logger tree          | per-instance namespace (`HiveJul`)                               |
+| `java.io.File*` constructors                               | relative paths use host cwd       | path argument made absolute against the instance root (`HiveFs`) |
+| `Path.of`, `Paths.get`, `FileSystems.getDefault().getPath` | same                              | static helpers                                                   |
+| shutdown hooks                                             | run at JVM end, not instance stop | capture and run on instance stop                                 |
 
 ## Working directory (M4)
 Java cannot change cwd; `user.dir` is cached at startup. So `InstanceTransformer` makes relative paths absolute
@@ -71,12 +71,12 @@ A JVM exit is emulated per instance:
 ## Commands (M8)
 Two kinds of commands, which are easy to mix up:
 
-| | Hive commands | Bukkit commands |
-|---|---|---|
-| Runs | in the host, once | inside one server |
-| Typed at | the host's `hive>` prompt, or `java -jar paperhive.jar hive <command>` | that server's console (`<server> <command>`, `all <command>`, `attach`) or in game |
-| API | `HiveCommand` (`paperhive-plugin`, `org.abdullahcxd.paperhive.plugin.command`) | Paper's Brigadier commands (`HiveBukkitPlugin.registerCommand`) |
-| Who adds them | Paperhive (`list`, `start`, `set`, ...) and Hive plugins (host half) | Paper plugins, and Hive plugins (server half, see the Bukkit bridge) |
+|               | Hive commands                                                                  | Bukkit commands                                                                    |
+|---------------|--------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| Runs          | in the host, once                                                              | inside one server                                                                  |
+| Typed at      | the host's `hive>` prompt, or `java -jar paperhive.jar hive <command>`         | that server's console (`<server> <command>`, `all <command>`, `attach`) or in game |
+| API           | `HiveCommand` (`paperhive-plugin`, `org.abdullahcxd.paperhive.plugin.command`) | Paper's Brigadier commands (`HiveBukkitPlugin.registerCommand`)                    |
+| Who adds them | Paperhive (`list`, `start`, `set`, ...) and Hive plugins (host half)           | Paper plugins, and Hive plugins (server half, see the Bukkit bridge)               |
 
 - A Hive command is a class: name, usage, description, aliases, `execute(sender, args)` and optional
   `complete(sender, args)` for tab completion. Paperhive's own live in `host.command`, one class each; a Hive plugin
@@ -296,6 +296,23 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   server halves' `ServerHalfLoader`), and on stop `JdbcDrivers` defines its helper in each of them, not just the
   instance loader. `ServerHalfLoader` defines its classes itself (instead of `URLClassLoader`'s JDK code) for this,
   which also gets server halves rewritten like Paper's plugins (`System.exit`, files, ...).
+
+## Server software (M13)
+
+Everything that differs per software lives in a `ServerSoftware` subclass (`host/software/<name>/`), registered in
+`ServerSoftwares` by its `MCSoftware` id: preparing the jar, default and config arguments, unsupported config keys,
+installing Paperhive's own plugin, readiness, graceful stop, console commands, per-server system properties and
+`ClassPatch`es. `ServerInstance` keeps what every server gets (loader, root, streams, exit, JDK rewrites) and asks
+its software for the rest; `InstanceTransformer` runs the generic rewrites, then the software's matching patches.
+
+- **Paper**: Paperclip output, `--add-plugin` for the bridge, ready when `MinecraftServer.isReady()`, stops via
+  `Bukkit.shutdown()`.
+- **Velocity**: the jar itself, its main is varargs (`asFixedArity()`), ready once its port accepts, JLine off
+  (`terminal.jline=false` for that server only), `VelocityShutdownPatch` makes `awaitProxyShutdown` interruptible so
+  the main thread ends at stop. Its plugin reads servers through the Hive API in-process and takes console commands
+  through `BridgeHooks.consoleEnabled`.
+
+Build: convention plugins in `build-logic` (`paperhive.java`, `paperhive.library`, `paperhive.publishing`).
 
 ## Known hazards
 - **Native libraries** (Netty epoll/io_uring, SQLite JNI): a native lib loads into one classloader per

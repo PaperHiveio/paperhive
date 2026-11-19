@@ -3,6 +3,8 @@ package org.abdullahcxd.paperhive.host.instance;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.host.software.PreparedServer;
+import org.abdullahcxd.paperhive.host.software.ServerSoftware;
+import org.abdullahcxd.paperhive.host.software.ServerSoftwares;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
@@ -24,6 +26,7 @@ import java.nio.file.Path;
 import java.security.Provider;
 import java.security.Security;
 import java.time.Duration;
+import java.util.function.Predicate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,6 +125,10 @@ public final class ServerInstance {
     @Getter
     private final Path root;
     private final PreparedServer server;
+    @Getter
+    private final ServerSoftware software;
+    // console commands through the server's own Paperhive plugin, when it registered one (Velocity's)
+    private volatile @Nullable Predicate<String> consoleDispatcher;
     private final ApiGateLoader gate;
     @Getter
     private final Options options;
@@ -159,35 +166,30 @@ public final class ServerInstance {
     private volatile HiveJul.@Nullable Namespace jul;
     private volatile CountDownLatch terminated = new CountDownLatch(0);
 
-    public ServerInstance(String name, @NotNull Path root, PreparedServer server, ApiGateLoader gate) {
+    public ServerInstance(@NotNull String name, @NotNull Path root, @NotNull PreparedServer server, @NotNull ApiGateLoader gate) {
         this(name, root, server, gate, Options.DEFAULT);
     }
 
-    public ServerInstance(String name, @NotNull Path root, PreparedServer server, ApiGateLoader gate, Options options) {
+    /** A Paper server (the default software). */
+    public ServerInstance(@NotNull String name, @NotNull Path root, @NotNull PreparedServer server, @NotNull ApiGateLoader gate,
+                          @NotNull Options options) {
+        this(name, root, ServerSoftwares.paper(), server, gate, options);
+    }
+
+    public ServerInstance(@NotNull String name, @NotNull Path root, @NotNull ServerSoftware software, @NotNull PreparedServer server,
+                          @NotNull ApiGateLoader gate, @NotNull Options options) {
         this.name = name;
         this.root = root.toAbsolutePath().normalize();
+        this.software = software;
         this.server = server;
         this.gate = gate;
         this.options = options;
         this.console = new InstanceConsole(name);
     }
 
-    /** Paper's own flags, pointed at this instance's root (relative paths resolve against it anyway, see {@link HiveFs}). */
+    /** The software's default arguments for this server, then its own {@link Options#args()}. */
     public @NotNull @Unmodifiable List<String> serverArgs() {
-        Path plugins = options.plugins() == null ? root.resolve("plugins") : options.plugins().toAbsolutePath().normalize();
-        List<String> args = new ArrayList<>(List.of(
-                "--nogui",
-                // the host owns stdin and forwards commands (dispatchCommand); Paper's own console reader would
-                // block on System.in forever and keep the instance alive after stop
-                "--noconsole",
-                "--universe", root.toString(),
-                "--plugins", plugins.toString(),
-                "--config", root.resolve("server.properties").toString(),
-                "--bukkit-settings", root.resolve("bukkit.yml").toString(),
-                "--spigot-settings", root.resolve("spigot.yml").toString(),
-                "--commands-settings", root.resolve("commands.yml").toString(),
-                "--paper-settings-directory", root.resolve("config").toString()));
-        if (options.port() != null) args.addAll(List.of("--port", options.port().toString()));
+        List<String> args = new ArrayList<>(software.defaultArgs(root, options));
         args.addAll(options.args());
         return List.copyOf(args);
     }
@@ -223,12 +225,9 @@ public final class ServerInstance {
 
         try {
             Files.createDirectories(root); // the instance's working directory; relative paths resolve against it
-            Path properties = root.resolve("server.properties");
-            if (options.port() != null && Files.notExists(properties)) {
-                Files.writeString(properties, "server-port=" + options.port() + "\n");
-            }
+            software.prepareRoot(root, options);
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot create root " + root + " of instance " + name, e);
+            throw new IllegalStateException("Cannot prepare root " + root + " of instance " + name, e);
         }
         lastArgs = List.copyOf(args);
         mainThrew = false;
@@ -238,6 +237,7 @@ public final class ServerInstance {
         shutdownHooks.clear();
         lockedChannels.clear();
         onStop.clear();
+        consoleDispatcher = null;
         sinks = console.newSinks();
         io = new HiveIo.InstanceIo(sinks);
         jul = new HiveJul.Namespace();
@@ -249,7 +249,8 @@ public final class ServerInstance {
         MethodHandle main;
         try {
             Class<?> mainClass = Class.forName(server.mainClass(), false, loader);
-            main = MethodHandles.publicLookup().findStatic(mainClass, "main", MethodType.methodType(void.class, String[].class));
+            // fixed arity: a varargs main(String...) (Velocity's) would otherwise take the String[] as one String
+            main = MethodHandles.publicLookup().findStatic(mainClass, "main", MethodType.methodType(void.class, String[].class)).asFixedArity();
         } catch (ReflectiveOperationException e) {
             classLoader = null;
             closeQuietly(loader);
@@ -263,7 +264,7 @@ public final class ServerInstance {
         startedAt = System.nanoTime();
         setState(State.STARTING);
         pendingRestart = null; // after STARTING, so isActive() never reads false in between
-        if (!isBukkit(loader)) setState(State.RUNNING); // no way to tell when it's booted
+        if (software.isReady(loader, options)) setState(State.RUNNING); // nothing to wait for (e.g. no way to tell)
 
         log.info("Starting instance {} from {}", name, root);
         main0.start();
@@ -281,11 +282,15 @@ public final class ServerInstance {
             } catch (InstanceExit ignored) {
                 // exited during boot
             } catch (Throwable t) {
+                boolean stopping;
                 synchronized (this) {
-                    // once stopping, main failing (e.g. "Shutdown in progress" adding a hook) is the stop's doing
-                    if (!exiting) mainThrew = true;
+                    // once stopping, main failing (e.g. "Shutdown in progress" adding a hook, or interrupted while it
+                    // waits for the server to finish) is the stop's doing, not a crash
+                    stopping = exiting;
+                    if (!stopping) mainThrew = true;
                 }
-                log.error("Instance {} crashed in main", name, t);
+                if (stopping) log.debug("Instance {}'s main ended with {} while stopping", name, t.toString());
+                else log.error("Instance {} crashed in main", name, t);
             }
         }, "hive-" + name + "-main");
         main0.setContextClassLoader(loader);
@@ -334,23 +339,13 @@ public final class ServerInstance {
     public boolean dispatchCommand(@NotNull String command) {
         InstanceClassLoader loader = classLoader;
         if (loader == null || (state != State.STARTING && state != State.RUNNING)) return false;
-        try {
-            Object craftServer = Class.forName("org.bukkit.Bukkit", true, loader).getMethod("getServer").invoke(null);
-            if (craftServer == null) return false; // still booting
-            Object minecraft = craftServer.getClass().getMethod("getServer").invoke(craftServer);
-            Object source = minecraft.getClass().getMethod("createCommandSourceStack").invoke(minecraft);
-            for (Method m : minecraft.getClass().getMethods()) {
-                // thread-safe: queued and run on the server thread, same path as Paper's own console
-                if (m.getName().equals("handleConsoleInput") && m.getParameterCount() == 2) {
-                    m.invoke(minecraft, command, source);
-                    return true;
-                }
-            }
-            log.warn("Instance {} has no handleConsoleInput, cannot run '{}'", name, command);
-        } catch (ReflectiveOperationException | LinkageError e) {
-            log.warn("Could not run '{}' on instance {}", command, name, e);
-        }
-        return false;
+        Predicate<String> dispatcher = consoleDispatcher;
+        return dispatcher != null ? dispatcher.test(command) : software.dispatchCommand(loader, command);
+    }
+
+    /** Console commands go through {@code dispatcher} for the rest of this run (a server's own Paperhive plugin). */
+    public void setConsoleDispatcher(@Nullable Predicate<String> dispatcher) {
+        consoleDispatcher = dispatcher;
     }
 
     /** The current run's standard streams, or null when not running. */
@@ -445,16 +440,8 @@ public final class ServerInstance {
         }
     }
 
-    private void requestShutdown(InstanceClassLoader loader) {
-        try {
-            Class<?> bukkit = Class.forName("org.bukkit.Bukkit", true, loader);
-            if (bukkit.getMethod("getServer").invoke(null) != null) {
-                bukkit.getMethod("shutdown").invoke(null); // Paper then stops and calls System.exit itself
-                return;
-            }
-        } catch (ReflectiveOperationException | LinkageError e) {
-            log.debug("Instance {} has no Bukkit server to shut down", name, e);
-        }
+    private void requestShutdown(@NotNull InstanceClassLoader loader) {
+        if (software.requestStop(loader)) return; // it stops, then calls System.exit itself
         // not up far enough for a graceful shutdown (or not a Bukkit server): treat it like SIGTERM on a JVM,
         // run the hooks, then let the reaper interrupt every instance thread, including ones started later
         List<Thread> hooks = beginExit();
@@ -615,30 +602,14 @@ public final class ServerInstance {
         }
     }
 
-    private static boolean isBukkit(InstanceClassLoader loader) {
-        try {
-            Class.forName("org.bukkit.Bukkit", false, loader);
-            return true;
-        } catch (ClassNotFoundException | LinkageError e) {
-            return false;
+    /** STARTING -> RUNNING once the software says it has finished booting. */
+    private void checkReady(@NotNull InstanceClassLoader loader) {
+        if (!software.isReady(loader, options)) return;
+        synchronized (this) {
+            if (state != State.STARTING || classLoader != loader) return;
+            setState(State.RUNNING);
         }
-    }
-
-    /** STARTING -> RUNNING once Paper reports it has finished booting. */
-    private void checkReady(InstanceClassLoader loader) {
-        try {
-            Object craftServer = Class.forName("org.bukkit.Bukkit", true, loader).getMethod("getServer").invoke(null);
-            if (craftServer == null) return;
-            Object minecraft = craftServer.getClass().getMethod("getServer").invoke(craftServer);
-            if (!Boolean.TRUE.equals(minecraft.getClass().getMethod("isReady").invoke(minecraft))) return;
-            synchronized (this) {
-                if (state != State.STARTING || classLoader != loader) return;
-                setState(State.RUNNING);
-            }
-            log.info("Instance {} is up after {}s", name, String.format("%.1f", (System.nanoTime() - startedAt) / 1e9));
-        } catch (ReflectiveOperationException | LinkageError e) {
-            log.debug("Cannot tell whether instance {} has booted", name, e);
-        }
+        log.info("Instance {} is up after {}s", name, String.format("%.1f", (System.nanoTime() - startedAt) / 1e9));
     }
 
     /** Closes channels the instance locked and never closed; process exit would release those locks. */

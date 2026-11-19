@@ -3,6 +3,7 @@ package org.abdullahcxd.paperhive.host.server;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.abdullahcxd.paperhive.host.software.paper.PaperSoftware;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.jetbrains.annotations.NotNull;
@@ -135,7 +136,8 @@ public final class ServerManager {
         }
         try {
             for (Path dir : server.sharedPlugins()) java.nio.file.Files.createDirectories(dir); // Paper skips a missing one
-            if (velocitySecret != null) VelocityForwarding.apply(instance.getRoot(), velocitySecret);
+            // forwarding is set up on the servers behind a proxy, Paper ones
+            if (velocitySecret != null && instance.getSoftware() instanceof PaperSoftware) VelocityForwarding.apply(instance.getRoot(), velocitySecret);
             List<String> args = new ArrayList<>(userArgs.isEmpty() ? instance.serverArgs() : userArgs);
             args.addAll(extraArgs.apply(server));
             instance.start(args);

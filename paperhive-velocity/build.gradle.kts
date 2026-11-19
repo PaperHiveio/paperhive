@@ -5,6 +5,8 @@ plugins {
 
 dependencies {
     compileOnly(libs.velocity.api)
+    // inside a hive the Paperhive API comes from the host; outside one it isn't there, and the plugin doesn't need it
+    compileOnly(project(":paperhive-api"))
     annotationProcessor(libs.velocity.api) // writes velocity-plugin.json from @Plugin
 }
 

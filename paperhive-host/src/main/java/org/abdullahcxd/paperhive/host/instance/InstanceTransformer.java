@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.abdullahcxd.paperhive.host.software.ClassPatch;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.ClassReader;
@@ -9,6 +10,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -108,6 +110,21 @@ final class InstanceTransformer {
             "java/io/PrintStream(Ljava/lang/String;Ljava/nio/charset/Charset;)V");
 
     private InstanceTransformer() {}
+
+    /** {@link #transform(byte[])}, then the server software's own patches for this class. */
+    static byte @NotNull [] transform(byte @NotNull [] bytes, @NotNull List<ClassPatch> patches) {
+        byte[] rewritten = transform(bytes);
+        if (patches.isEmpty()) return rewritten;
+        ClassReader reader = new ClassReader(rewritten);
+        String className = reader.getClassName();
+        List<ClassPatch> applicable = patches.stream().filter(p -> p.appliesTo(className)).toList();
+        if (applicable.isEmpty()) return rewritten;
+        ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_MAXS);
+        ClassVisitor chain = writer;
+        for (ClassPatch patch : applicable.reversed()) chain = patch.patch(chain);
+        reader.accept(chain, 0);
+        return writer.toByteArray();
+    }
 
     static byte[] transform(byte @NotNull [] bytes) {
         ClassReader reader = new ClassReader(bytes); // only indexes the constant pool

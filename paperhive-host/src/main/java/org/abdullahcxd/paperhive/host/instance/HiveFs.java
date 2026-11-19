@@ -1,5 +1,6 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.abdullahcxd.paperhive.host.software.ServerSoftwares;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -79,17 +80,24 @@ public final class HiveFs {
         return absolute(file).getCanonicalFile();
     }
 
-    /** Replaces {@code System.getProperty(key)}: {@code user.dir} is the instance root. */
-    public static @NotNull String getProperty(@NotNull String key) {
-        if ("user.dir".equals(key)) {
-            Path root = root();
-            if (root != null) return root.toString();
+    /**
+     * Replaces {@code System.getProperty(key)}: {@code user.dir} is the instance root, and the instance's software may
+     * set its own value for a property ({@code ServerSoftware.systemProperties()}). Other keys don't look up the caller.
+     */
+    public static @Nullable String getProperty(@NotNull String key) {
+        if ("user.dir".equals(key) || ServerSoftwares.overridesProperty(key)) {
+            ServerInstance instance = InstanceHooks.callerOrNull();
+            if (instance != null) {
+                if ("user.dir".equals(key)) return instance.getRoot().toString();
+                String own = instance.getSoftware().systemProperties().get(key);
+                if (own != null) return own;
+            }
         }
         return System.getProperty(key);
     }
 
     /** Replaces {@code System.getProperty(key, def)}. */
-    public static @NotNull String getProperty(@NotNull String key, @NotNull String def) {
+    public static @Nullable String getProperty(@NotNull String key, @Nullable String def) {
         String value = getProperty(key);
         return value != null ? value : def;
     }

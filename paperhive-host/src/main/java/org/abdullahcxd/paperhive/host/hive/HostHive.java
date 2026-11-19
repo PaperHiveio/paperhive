@@ -41,6 +41,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -215,6 +216,13 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     @Override
+    public void consoleEnabled(@NotNull Predicate<String> dispatcher) {
+        ServerInstance caller = caller();
+        if (caller == null) throw new IllegalStateException("Only a server's own plugin can take its console commands");
+        caller.setConsoleDispatcher(dispatcher);
+    }
+
+    @Override
     public void bridgeDisabled() {
         ServerInstance caller = caller();
         if (caller != null) bridges.remove(caller.getName());
@@ -322,6 +330,7 @@ public final class HostHive implements Hive, BridgeHooks {
 
         @Override public @NotNull String getName() { return name; }
         @Override public int getPort() { instance(); return servers.server(name).port(); }
+        @Override public @NotNull String getSoftware() { instance(); return servers.server(name).software().getName(); }
         @Override public @NotNull HiveServerState getState() { return HiveServerState.valueOf(instance().getState().name()); }
         @Override public @NotNull Path getRoot() { return instance().getRoot(); }
         @Override public boolean start() { return !instance().isActive() && servers.start(name); }

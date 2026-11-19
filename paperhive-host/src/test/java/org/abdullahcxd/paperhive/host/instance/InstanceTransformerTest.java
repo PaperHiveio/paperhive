@@ -1,5 +1,8 @@
 package org.abdullahcxd.paperhive.host.instance;
 
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.ClassVisitor;
+import org.abdullahcxd.paperhive.host.software.ClassPatch;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -96,6 +99,66 @@ class InstanceTransformerTest {
         constants.accept(cw);
         cw.visitEnd();
         return InstanceTransformer.mayNeedRewrite(new ClassReader(cw.toByteArray()));
+    }
+
+    @Test
+    void softwarePatchesApplyToTheirClassesOnly() {
+        // a patch that turns every "hello" constant of its target into "patched"
+        ClassPatch patch = new ClassPatch() {
+            @Override
+            public boolean appliesTo(String className) {
+                return className.equals("test/Target");
+            }
+
+            @Override
+            public ClassVisitor patch(ClassVisitor next) {
+                return new ClassVisitor(Opcodes.ASM9, next) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                        return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, desc, signature, exceptions)) {
+                            @Override
+                            public void visitLdcInsn(Object value) {
+                                super.visitLdcInsn("hello".equals(value) ? "patched" : value);
+                            }
+                        };
+                    }
+                };
+            }
+        };
+        byte[] target = greeter("test/Target"), other = greeter("test/Other");
+        assertTrue(constants(InstanceTransformer.transform(target, List.of(patch))).contains("patched"));
+        assertFalse(constants(InstanceTransformer.transform(other, List.of(patch))).contains("patched"), "another class is untouched");
+        assertArrayEquals(other, InstanceTransformer.transform(other, List.of()), "no patches: the bytes as they were");
+    }
+
+    /** {@code class <name> { static String greet() { return "hello"; } }} */
+    private static byte[] greeter(String name) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null);
+        MethodVisitor mv = cw.visitMethod(Opcodes.ACC_STATIC, "greet", "()Ljava/lang/String;", null, null);
+        mv.visitCode();
+        mv.visitLdcInsn("hello");
+        mv.visitInsn(Opcodes.ARETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    private static List<String> constants(byte[] bytes) {
+        List<String> found = new java.util.ArrayList<>();
+        new ClassReader(bytes).accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                return new MethodVisitor(Opcodes.ASM9) {
+                    @Override
+                    public void visitLdcInsn(Object value) {
+                        found.add(String.valueOf(value));
+                    }
+                };
+            }
+        }, 0);
+        return found;
     }
 
 }

@@ -5,6 +5,8 @@ import org.abdullahcxd.paperhive.constants.DirectoryConstants;
 import org.abdullahcxd.paperhive.constants.DownloaderConstants;
 import org.abdullahcxd.paperhive.downloader.MCSoftware;
 import org.abdullahcxd.paperhive.downloader.MCVersion;
+import org.abdullahcxd.paperhive.host.software.ServerSoftware;
+import org.abdullahcxd.paperhive.host.software.ServerSoftwares;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +52,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
     private static final Set<String> TOP_KEYS = Set.of("ConfigurationVersion", "Software", "Version", "Host", "Servers");
     private static final Set<String> HOST_KEYS = Set.of("Plugins", "Cache", "Mirror", "StopTimeout", "MemoryWarning",
             "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret");
-    private static final Set<String> SERVER_KEYS = Set.of("Name", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
+    private static final Set<String> SERVER_KEYS = Set.of("Name", "Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
     // also a folder name and the console prefix
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_-]{1,32}");
     private static final YAMLMapper YAML = YAMLMapper.builder()
@@ -60,7 +62,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
     private static final String DEFAULT = """
             # Paperhive host configuration
             ConfigurationVersion: 1
-            # Server software and Minecraft version every server runs
+            # The software and version every server runs, unless it says otherwise (papermc or velocitymc)
             Software: papermc
             Version: 1.21.11
             # Optional host settings, shown with their defaults (they apply when Paperhive starts):
@@ -79,6 +81,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
               - Name: main
                 Port: 25565
                 # Optional, shown with their defaults:
+                # Software: papermc           this server's software (velocitymc: a Velocity proxy in the hive)
+                # Version: 1.21.11            its version (default: the one above, or that software's newest)
                 # IP: 0.0.0.0                 the address to listen on (all of them)
                 # Root: instances/main        the server's folder
                 # Plugins: <Root>/plugins
@@ -96,18 +100,23 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
      * @param sharedPlugins more folders of plugin jars, which other servers may load too (Paper's
      *                      {@code --add-plugin-dir}: the jars are shared, each plugin's data stays in this server's folder)
      */
-    public record Server(String name, int port, @Nullable String ip, Path root, @Nullable Path plugins, List<String> args,
-                         boolean autostart, ServerInstance.RestartPolicy restart, List<String> disabledHivePlugins,
-                         List<Path> sharedPlugins) {
+    public record Server(@NotNull String name, @NotNull MCSoftware software, @NotNull MCVersion version, int port,
+                         @Nullable String ip, @NotNull Path root, @Nullable Path plugins, @NotNull List<String> args,
+                         boolean autostart, ServerInstance.@NotNull RestartPolicy restart, @NotNull List<String> disabledHivePlugins,
+                         @NotNull List<Path> sharedPlugins) {
+
+        /** What runs it. */
+        public @NotNull ServerSoftware serverSoftware() {
+            return ServerSoftwares.of(software);
+        }
 
         public ServerInstance.@NotNull Options options() {
             return options(Host.DEFAULT);
         }
 
+        /** How its instance runs: the software turns settings like {@code IP} into its own flags, then {@code Args}. */
         public ServerInstance.@NotNull Options options(@NotNull Host host) {
-            List<String> all = new ArrayList<>();
-            if (ip != null) all.addAll(List.of("--host", ip));
-            for (Path dir : sharedPlugins) all.addAll(List.of("--add-plugin-dir", dir.toAbsolutePath().normalize().toString()));
+            List<String> all = new ArrayList<>(serverSoftware().configArgs(this));
             all.addAll(args);
             return new ServerInstance.Options(port, plugins, all, restart, host.restartDelay(), host.maxCrashes(), host.crashWindow());
         }
@@ -126,11 +135,6 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
                        Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret) {
         public static final Host DEFAULT = new Host(Path.of("plugins"), DirectoryConstants.CACHE_DIRECTORY_PATH,
                 DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null);
-
-        /** Patched jars: in their own folder, as PaperclipCache prunes every other entry of its folder. */
-        public @NotNull Path paperclipCache() {
-            return cache.resolve("paperclip");
-        }
     }
 
     public static @NotNull HiveConfig load(@NotNull Path file) {
@@ -317,19 +321,10 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         List<String> problems = new ArrayList<>();
         checkKeys(node, TOP_KEYS, "", problems);
 
-        String softwareName = string(node, "Software", "", MCSoftware.PAPERMC.getName(), problems);
-        MCSoftware software = Arrays.stream(MCSoftware.values()).filter(s -> s.getName().equals(softwareName)).findFirst().orElse(null);
-        if (software == null && softwareName != null) {
-            problems.add("Software: unknown '" + softwareName + "', supported: " + Arrays.stream(MCSoftware.values()).map(MCSoftware::getName).toList());
-        }
-        // any scalar: an unquoted 1.21 is a YAML number
-        JsonNode versionNode = node.get("Version");
-        String versionName = versionNode == null ? MCVersion.MC1_21_11.getVersion() : versionNode.isValueNode() ? versionNode.asString() : null;
-        MCVersion version = Arrays.stream(MCVersion.values()).filter(v -> v.getVersion().equals(versionName)).findFirst().orElse(null);
-        if (version == null) {
-            problems.add("Version: unknown '" + (versionNode == null ? "" : versionNode) + "', supported: "
-                    + Arrays.stream(MCVersion.values()).map(MCVersion::getVersion).toList());
-        }
+        MCSoftware named = software(node, "", MCSoftware.PAPERMC, problems);
+        // an unknown Software is reported; carry on as Paper so every other problem is found in the same go
+        MCSoftware software = named == null ? MCSoftware.PAPERMC : named;
+        MCVersion version = version(node, "", software, software.defaultVersion(), problems);
 
         Host host = host(node.get("Host"), problems);
 
@@ -339,7 +334,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             problems.add("Servers: expected a list with at least one server (- Name: ..., Port: ...)");
         } else {
             for (int i = 0; i < list.size(); i++) {
-                Server server = server(list.get(i), "Servers[" + i + "]", problems);
+                Server server = server(list.get(i), "Servers[" + i + "]", software, version, problems);
                 if (server != null) servers.add(server);
             }
             checkUnique(servers, problems);
@@ -382,7 +377,34 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         return fallback;
     }
 
-    private static @Nullable Server server(JsonNode node, String at, List<String> problems) {
+    /** The {@code Software} of {@code node} ({@code fallback} if unset), or null (reported) if unknown. */
+    private static @Nullable MCSoftware software(@NotNull ObjectNode node, @NotNull String prefix, @NotNull MCSoftware fallback, @NotNull List<String> problems) {
+        String name = string(node, "Software", prefix, fallback.getName(), problems);
+        if (name == null) return null;
+        MCSoftware software = MCSoftware.byName(name);
+        if (software == null) {
+            problems.add(prefix + "Software: unknown '" + name + "', supported: " + Arrays.stream(MCSoftware.values()).map(MCSoftware::getName).toList());
+        }
+        return software;
+    }
+
+    /** The {@code Version} of {@code node} for {@code software} ({@code fallback} if unset), or null (reported) if the mirror lacks it. */
+    private static @Nullable MCVersion version(@NotNull ObjectNode node, @NotNull String prefix, @NotNull MCSoftware software, @NotNull MCVersion fallback,
+                                               @NotNull List<String> problems) {
+        JsonNode value = node.get("Version");
+        if (value == null) return fallback;
+        // any scalar: an unquoted 1.21 is a YAML number
+        String name = value.isValueNode() ? value.asString() : null;
+        MCVersion version = name == null ? null : MCVersion.of(software, name);
+        if (version == null) {
+            problems.add(prefix + "Version: unknown " + software.getName() + " version '" + (name != null ? name : value) + "', supported: "
+                    + software.versions().stream().map(MCVersion::getVersion).toList());
+        }
+        return version;
+    }
+
+    private static @Nullable Server server(@NotNull JsonNode node, @NotNull String at, @Nullable MCSoftware hiveSoftware, @Nullable MCVersion hiveVersion,
+                                           @NotNull List<String> problems) {
         if (!(node instanceof ObjectNode s)) {
             problems.add(at + ": expected keys like Name: and Port:");
             return null;
@@ -395,6 +417,17 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         }
         String label = name == null ? at : at + " (" + name + ")";
         checkKeys(s, SERVER_KEYS, label + ".", problems);
+
+        MCSoftware software = hiveSoftware == null ? null : software(s, label + ".", hiveSoftware, problems);
+        MCVersion version = null;
+        if (software != null) {
+            MCVersion fallback = software == hiveSoftware && hiveVersion != null ? hiveVersion : software.defaultVersion();
+            version = version(s, label + ".", software, fallback, problems);
+            ServerSoftware runs = ServerSoftwares.of(software);
+            for (String key : runs.unsupportedKeys()) {
+                if (s.has(key)) problems.add(label + "." + key + ": not for " + runs.displayName() + " servers");
+            }
+        }
 
         JsonNode portNode = s.get("Port");
         int port = 0;
@@ -426,8 +459,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             }
         }
 
-        if (problems.size() > before || name == null) return null;
-        return new Server(name, port, ip, root == null ? Path.of("instances", name) : Path.of(root),
+        if (problems.size() > before || name == null || software == null || version == null) return null;
+        return new Server(name, software, version, port, ip, root == null ? Path.of("instances", name) : Path.of(root),
                 plugins == null ? null : Path.of(plugins), args, autostart, restart, disabled, shared);
     }
 

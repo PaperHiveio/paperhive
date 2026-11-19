@@ -18,12 +18,12 @@ Thanks for helping. Bug reports, fixes, docs and ideas are all welcome.
 
 Useful tasks:
 
-| Task                                  | What it does                                                           |
-|---------------------------------------|------------------------------------------------------------------------|
-| `./gradlew build`                     | Compile and unit-test everything (what CI runs)                        |
-| `./gradlew :paperhive-host:run`       | Run the host in `paperhive-host/run/`                                  |
+| Task                                  | What it does                                                             |
+|---------------------------------------|--------------------------------------------------------------------------|
+| `./gradlew build`                     | Compile and unit-test everything (what CI runs)                          |
+| `./gradlew :paperhive-host:run`       | Run the host in `paperhive-host/run/`                                    |
 | `./gradlew :paperhive-host:shadowJar` | Build the host jar (`paperhive-host/build/libs/paperhive-<version>.jar`) |
-| `./gradlew publishToMavenLocal`       | Publish the SDK, host and Gradle plugin to `~/.m2` for plugin projects |
+| `./gradlew publishToMavenLocal`       | Publish the SDK, host and Gradle plugin to `~/.m2` for plugin projects   |
 
 The tests against a real Paper server (`PaperInstanceIT`, `HivePluginLeakIT`) are opt-in locally and run in CI by the
 `paper-it` workflow; [docs/upgrading.md](docs/upgrading.md)
@@ -31,11 +31,11 @@ shows how to run them. Run them when you touch class loading, transforms, instan
 
 ## Pull requests
 
-- Keep a pull request to one change, with a test for new behaviour or the bug it fixes.
+- Keep a pull request to one change, with a test for new behavior or the bug it fixes.
 - `./gradlew build` must pass on Linux and Windows (CI runs both).
-- Follow the code around you: Java 21, 4-space indentation, Lombok where the module already uses it, comments that
+- Follow the surrounding code: Java 21, 4-space indentation, Lombok where the module already uses it, comments that
   explain *why* rather than *what*.
-- Update the user docs in `website/docs/` (and `docs/` for design changes) when you change behaviour, config keys or commands, and `paperhive.yml`'s generated comments when you
+- Update the user docs in `website/docs/` (and `docs/` for design changes) when you change behavior, config keys or commands, and `paperhive.yml`'s generated comments when you
   add a config key (`HiveConfig.DEFAULT`). A config format change needs a `ConfigurationVersion` migration.
 - Write commit messages in the imperative ("Add IP key to servers"), with a body explaining why when it isn't obvious.
 

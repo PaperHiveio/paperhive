@@ -46,4 +46,12 @@ class ServerSyncTest {
         assertEquals(Map.of("lobby", 30000), proxy);
     }
 
+    @Test
+    void leavesOutProxiesAndItself() {
+        sync.setSelf("proxy");
+        assertEquals(List.of("Registered survival at 127.0.0.1:25602"), sync.sync(List.of(
+                "proxy\tRUNNING\t25577\tvelocitymc", "other-proxy\tRUNNING\t25578\tvelocitymc", "survival\tRUNNING\t25602\tpapermc")));
+        assertEquals(List.of(), sync.sync(List.of("survival\tRUNNING\t25602")), "the older three-column format still works");
+    }
+
 }

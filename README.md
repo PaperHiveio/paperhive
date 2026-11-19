@@ -29,6 +29,7 @@ that sees every server, and a server half with full Bukkit/Paper access in each 
 - **Isolation where it matters**: per-server working directory, stdout/stdin, logging, `System.exit` and threads;
   a crashing server doesn't take the others down (`Restart: on-crash`).
 - **Hive plugins** with a host half and a server half in one jar, a typed event bus, and messaging between servers.
+- **Mixed software**: Paper servers and a Velocity proxy in the same hive (`Software:` per server).
 - **Velocity plugin** that registers the hive's servers with your proxy.
 - **One config file**, `paperhive.yml`, validated with clear errors and migrated across versions.
 - **Gradle plugin** for Hive plugin projects: dependencies, descriptor, scaffolding and a `runHive` task.
