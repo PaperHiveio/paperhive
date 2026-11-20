@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host.instance;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Shuts down an instance's own Log4j (Paper's copy, in the instance loader) once the instance has stopped, which
@@ -16,7 +17,7 @@ final class InstanceLog4j {
 
     private InstanceLog4j() {}
 
-    static void shutdown(InstanceClassLoader loader) {
+    static void shutdown(@NotNull InstanceClassLoader loader) {
         if (!loader.hasLoaded(LOG_MANAGER)) return; // never used Log4j: nothing to close, and don't start it now
         try {
             Class<?> logManager = Class.forName(LOG_MANAGER, false, loader);

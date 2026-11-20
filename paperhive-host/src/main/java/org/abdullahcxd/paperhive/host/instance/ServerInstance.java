@@ -427,7 +427,7 @@ public final class ServerInstance {
         return hooks;
     }
 
-    private void runHooks(List<Thread> hooks) {
+    private void runHooks(@NotNull List<Thread> hooks) {
         for (Thread hook : hooks) hook.start();
         long deadline = System.nanoTime() + HOOK_TIMEOUT.toNanos();
         for (Thread hook : hooks) {
@@ -637,7 +637,7 @@ public final class ServerInstance {
         return loader == null ? 0 : liveThreads(loader).size();
     }
 
-    private List<Thread> liveThreads(InstanceClassLoader loader) {
+    private @NotNull List<Thread> liveThreads(InstanceClassLoader loader) {
         ThreadGroup g = group;
         ThreadGroup root = HOST_GROUP;
         while (root.getParent() != null) root = root.getParent();
@@ -701,11 +701,11 @@ public final class ServerInstance {
         return false;
     }
 
-    private static List<String> names(List<Thread> threads) {
+    private static @NotNull @Unmodifiable List<String> names(@NotNull List<Thread> threads) {
         return threads.stream().map(Thread::getName).toList();
     }
 
-    private static boolean await(CountDownLatch latch, Duration timeout) {
+    private static boolean await(@NotNull CountDownLatch latch, @NotNull Duration timeout) {
         try {
             return latch.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
@@ -714,7 +714,7 @@ public final class ServerInstance {
         }
     }
 
-    private void closeQuietly(InstanceClassLoader loader) {
+    private void closeQuietly(@NotNull InstanceClassLoader loader) {
         try {
             loader.close();
         } catch (IOException e) {

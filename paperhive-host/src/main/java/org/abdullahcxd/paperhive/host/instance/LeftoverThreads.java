@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host.instance;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
@@ -41,7 +42,7 @@ final class LeftoverThreads {
         return t instanceof ForkJoinWorkerThread worker && worker.getPool() == ForkJoinPool.commonPool();
     }
 
-    static void shutdownExecutors(List<Thread> threads) {
+    static void shutdownExecutors(@NotNull List<Thread> threads) {
         Set<Object> done = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread t : threads) {
             Object executor = t instanceof ForkJoinWorkerThread worker ? worker.getPool() : findExecutor(t);

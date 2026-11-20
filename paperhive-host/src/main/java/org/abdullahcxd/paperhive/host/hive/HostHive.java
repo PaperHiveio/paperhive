@@ -139,7 +139,7 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     /** {@link #subscribe} for a known owner (a server, a Hive plugin's loader, or null for the host). */
-    Registration subscribeAs(@Nullable Object owner, String channel, HiveMessageListener listener) {
+    @NotNull Registration subscribeAs(@Nullable Object owner, String channel, HiveMessageListener listener) {
         Owned<HiveMessageListener> owned = new Owned<>(owner, listener);
         channels.computeIfAbsent(channel, c -> new CopyOnWriteArrayList<>()).add(owned);
         return () -> channels.getOrDefault(channel, List.of()).remove(owned);
@@ -182,7 +182,7 @@ public final class HostHive implements Hive, BridgeHooks {
     }
 
     /** {@link #respond} for a known owner. */
-    Registration respondAs(@Nullable Object owner, String channel, HiveResponder responder) {
+    @NotNull Registration respondAs(@Nullable Object owner, String channel, HiveResponder responder) {
         Owned<HiveResponder> owned = new Owned<>(owner, responder);
         responders.computeIfAbsent(channel, c -> new CopyOnWriteArrayList<>()).add(owned);
         return () -> responders.getOrDefault(channel, List.of()).remove(owned);

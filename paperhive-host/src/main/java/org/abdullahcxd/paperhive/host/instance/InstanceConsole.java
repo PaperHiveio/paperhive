@@ -27,6 +27,7 @@ public final class InstanceConsole {
         void line(String line, boolean error);
     }
 
+    @Getter
     private final String name;
     // "[lobby] " before each line it echoes to the host, the name in honey
     private final String prefix;

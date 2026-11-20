@@ -17,7 +17,7 @@ once, then starts each server in its own class loader with its own folder, conso
 share one JIT-warmed runtime and one heap instead of one process each. Hive plugins span the whole hive: a host half
 that sees every server, and a server half with full Bukkit/Paper access in each one.
 
-> **Status:** early development (`0.0.1-SNAPSHOT`). Paper internals are pinned per release; see
+> **Status:** early development (`0.1.1-SNAPSHOT`). Paper internals are pinned per release; see
 > [docs/upgrading.md](docs/upgrading.md).
 
 > **Note:** Includes AI-generated code by Claude.
@@ -103,16 +103,16 @@ See [`test-plugin`](test-plugin) for a fuller example, and "Gradle plugin (userd
 
 ## Modules
 
-| Module                | What it is                                                                 |
-|-----------------------|----------------------------------------------------------------------------|
-| `paperhive-host`      | The host: config, server instances, class loading, console (`paperhive.jar`) |
-| `paperhive-api`       | The Hive API: servers, events, messaging                                   |
-| `paperhive-plugin`    | The Hive plugin API (host half)                                            |
-| `paperhive-bridge`    | The Paper plugin each server loads; the server-half API (`HiveBukkitPlugin`) |
-| `paperhive-sdk`       | Everything a Hive plugin compiles against, as one dependency                |
-| `paperhive-gradle`    | The Gradle plugin for Hive plugin projects                                  |
-| `paperhive-velocity`  | The Velocity plugin                                                        |
-| `paperhive-downloader`, `paperhive-constants` | Fetching and verifying server jars from the mirror     |
+| Module                                        | What it is                                                                   |
+|-----------------------------------------------|------------------------------------------------------------------------------|
+| `paperhive-host`                              | The host: config, server instances, class loading, console (`paperhive.jar`) |
+| `paperhive-api`                               | The Hive API: servers, events, messaging                                     |
+| `paperhive-plugin`                            | The Hive plugin API (host half)                                              |
+| `paperhive-bridge`                            | The Paper plugin each server loads; the server-half API (`HiveBukkitPlugin`) |
+| `paperhive-sdk`                               | Everything a Hive plugin compiles against, as one dependency                 |
+| `paperhive-gradle`                            | The Gradle plugin for Hive plugin projects                                   |
+| `paperhive-velocity`                          | The Velocity plugin                                                          |
+| `paperhive-downloader`, `paperhive-constants` | Fetching and verifying server jars from the mirror                           |
 
 ## Documentation
 

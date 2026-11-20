@@ -6,7 +6,7 @@ Paperhive is in early development. Only the latest commit on the default branch 
 
 | Version                   | Supported |
 |---------------------------|-----------|
-| `0.0.1-SNAPSHOT` (latest) | Yes       |
+| `0.1.1-SNAPSHOT` (latest) | Yes       |
 | Anything older            | No        |
 
 ## Reporting a vulnerability

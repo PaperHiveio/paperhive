@@ -7,6 +7,11 @@
         <compositeConfiguration>
           <compositeBuild compositeDefinitionSource="SCRIPT">
             <builds>
+              <build path="$PROJECT_DIR$/build-logic" name="build-logic">
+                <projects>
+                  <project path="$PROJECT_DIR$/build-logic" />
+                </projects>
+              </build>
               <build path="$PROJECT_DIR$/paperhive-gradle" name="paperhive-gradle">
                 <projects>
                   <project path="$PROJECT_DIR$/paperhive-gradle" />
@@ -19,6 +24,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/build-logic" />
             <option value="$PROJECT_DIR$/paperhive-api" />
             <option value="$PROJECT_DIR$/paperhive-bridge" />
             <option value="$PROJECT_DIR$/paperhive-constants" />

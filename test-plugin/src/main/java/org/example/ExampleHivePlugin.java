@@ -14,6 +14,7 @@ import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.abdullahcxd.paperhive.plugin.context.PluginContext;
 import org.abdullahcxd.paperhive.plugin.context.ServerContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
@@ -89,7 +90,7 @@ public final class ExampleHivePlugin extends PaperhivePlugin {
     }
 
     @Override
-    public @NotNull List<String> complete(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
+    public @NotNull @Unmodifiable List<String> complete(@NotNull HiveCommandSender sender, @NotNull List<String> args) {
       return args.size() == 1 ? List.of("world") : List.of();
     }
 

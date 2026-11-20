@@ -1,6 +1,7 @@
 package org.abdullahcxd.paperhive.host.instance;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -46,7 +47,7 @@ final class JdbcDrivers {
     }
 
     /** Deregisters the instance's drivers that {@code helper}'s loader can see (its own and its parents'). */
-    private static void deregisterVisibleTo(Class<?> helper, InstanceClassLoader loader) throws ReflectiveOperationException {
+    private static void deregisterVisibleTo(@NotNull Class<?> helper, InstanceClassLoader loader) throws ReflectiveOperationException {
         @SuppressWarnings("unchecked")
         List<Driver> drivers = Collections.list((Enumeration<Driver>) helper.getMethod("drivers").invoke(null));
         for (Driver driver : drivers) {

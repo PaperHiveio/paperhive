@@ -131,7 +131,7 @@ public final class HiveConsole {
     }
 
     /** {@code hive > }, or the attached server's name (in honey) while attached. */
-    private static String prompt(@Nullable ServerInstance attached) {
+    private static @NotNull String prompt(@Nullable ServerInstance attached) {
         return attached == null ? ConsoleText.name("hive") + ConsoleText.muted(" > ")
                 : ConsoleText.name(attached.getName()) + ConsoleText.muted(" (attached) > ");
     }
@@ -157,7 +157,7 @@ public final class HiveConsole {
         private boolean terminalGone;
 
         /** @param fallback the JVM's own standard output, for when the terminal is gone */
-        private AboveOutput(LineReader reader, PrintStream fallback) {
+        private AboveOutput(@NotNull LineReader reader, PrintStream fallback) {
             this.reader = reader;
             this.fallback = fallback;
             this.plain = reader.getTerminal().getType().equals(Terminal.TYPE_DUMB); // "dumb-color" keeps them

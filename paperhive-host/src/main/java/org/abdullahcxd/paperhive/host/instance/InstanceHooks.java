@@ -176,7 +176,7 @@ public final class InstanceHooks {
     }
 
     /** Replaces {@code SecureClassLoader.defineClass(String, ByteBuffer, CodeSource)}. */
-    public static @NotNull Class<?> defineClass(@NotNull Object loader, @NotNull String name, @NotNull ByteBuffer buffer, @NotNull CodeSource cs) {
+    public static @Nullable Class<?> defineClass(@NotNull Object loader, @NotNull String name, @NotNull ByteBuffer buffer, @NotNull CodeSource cs) {
         byte[] b = new byte[buffer.remaining()];
         buffer.get(b);
         return defineClass(loader, name, b, 0, b.length, cs);

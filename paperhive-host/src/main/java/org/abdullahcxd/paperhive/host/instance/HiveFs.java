@@ -28,19 +28,19 @@ public final class HiveFs {
     private HiveFs() {}
 
     /** {@code new File(path)}, {@code new FileInputStream(path)}, ...: the path argument. */
-    public static @NotNull String resolve(@Nullable String path) {
+    public static @Nullable String resolve(@Nullable String path) {
         if (path == null || new File(path).isAbsolute()) return path;
         Path root = root();
         return root == null ? path : new File(root.toFile(), path).getPath();
     }
 
     /** {@code new File(parent, child)} becomes {@code new File(join(parent, child))}. */
-    public static @NotNull String join(@NotNull String parent, @NotNull String child) {
+    public static @Nullable String join(@NotNull String parent, @NotNull String child) {
         return resolve(new File(parent, child).getPath());
     }
 
     /** {@code new File(parent, child)} becomes {@code new File(join(parent, child))}. */
-    public static @NotNull String join(@NotNull File parent, @NotNull String child) {
+    public static @Nullable String join(@NotNull File parent, @NotNull String child) {
         return resolve(new File(parent, child).getPath());
     }
 

@@ -7,7 +7,7 @@ import org.gradle.api.provider.Property;
  * The {@code paperhive { }} block. Everything is optional:
  * <pre>
  * paperhive {
- *     paperhiveVersion = "0.0.1-SNAPSHOT"           // the SDK and host to use; default: this plugin's version
+ *     paperhiveVersion = "0.1.1-SNAPSHOT"           // the SDK and host to use; default: this plugin's version
  *     main = "com.example.MyHivePlugin"             // set it to have paperhive.yml generated (else write your own)
  *     serverMain = "com.example.MyServerPlugin"     // the server half, if there is one
  *     pluginName = "MyPlugin"                       // default: the project's name
