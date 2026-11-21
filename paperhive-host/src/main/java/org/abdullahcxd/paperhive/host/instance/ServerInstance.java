@@ -115,11 +115,19 @@ public final class ServerInstance {
         HiveIo.install();
     }
 
-    private static final Duration HOOK_TIMEOUT = Duration.ofSeconds(30);
+    /** How long a stopping instance's shutdown hooks get. */
+    private static volatile Duration hookTimeout = Duration.ofSeconds(30);
     /** After an exit (and its hooks), how long remaining instance threads get before they're interrupted. */
-    static final Duration EXIT_GRACE = Duration.ofSeconds(5);
+    static volatile Duration exitGrace = Duration.ofSeconds(5);
     /** After interrupting, how long before remaining threads are reported as leaked and the instance is dropped anyway. */
-    static final Duration LEAK_TIMEOUT = Duration.ofSeconds(10);
+    static volatile Duration leakTimeout = Duration.ofSeconds(10);
+
+    /** {@code Host.Unsafe}'s timeouts, for every instance; set once at start, before any instance runs. */
+    public static void setTimeouts(@NotNull Duration hook, @NotNull Duration grace, @NotNull Duration leak) {
+        hookTimeout = hook;
+        exitGrace = grace;
+        leakTimeout = leak;
+    }
 
     @Getter
     private final String name;
@@ -322,8 +330,8 @@ public final class ServerInstance {
         log.warn("Instance {} did not stop within {}, forcing it", name, timeout);
         List<Thread> hooks = beginExit();
         if (hooks != null) runHooks(hooks);
-        exitedAt = System.nanoTime() - EXIT_GRACE.toNanos(); // let the reaper interrupt right away
-        await(done, LEAK_TIMEOUT.plusSeconds(5));
+        exitedAt = System.nanoTime() - exitGrace.toNanos(); // let the reaper interrupt right away
+        await(done, leakTimeout.plusSeconds(5));
         return false;
     }
 
@@ -429,7 +437,7 @@ public final class ServerInstance {
 
     private void runHooks(@NotNull List<Thread> hooks) {
         for (Thread hook : hooks) hook.start();
-        long deadline = System.nanoTime() + HOOK_TIMEOUT.toNanos();
+        long deadline = System.nanoTime() + hookTimeout.toNanos();
         for (Thread hook : hooks) {
             try {
                 hook.join(Math.max(1, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())));
@@ -437,7 +445,7 @@ public final class ServerInstance {
                 Thread.currentThread().interrupt();
                 return;
             }
-            if (hook.isAlive()) log.warn("Shutdown hook {} of instance {} still running after {}", hook.getName(), name, HOOK_TIMEOUT);
+            if (hook.isAlive()) log.warn("Shutdown hook {} of instance {} still running after {}", hook.getName(), name, hookTimeout);
         }
     }
 
@@ -447,7 +455,7 @@ public final class ServerInstance {
         // run the hooks, then let the reaper interrupt every instance thread, including ones started later
         List<Thread> hooks = beginExit();
         if (hooks != null) runHooks(hooks);
-        exitedAt = System.nanoTime() - EXIT_GRACE.toNanos();
+        exitedAt = System.nanoTime() - exitGrace.toNanos();
     }
 
     /** Watches one generation of the instance until all its threads are gone, then finishes it. */
@@ -480,11 +488,11 @@ public final class ServerInstance {
             long exited = exitedAt;
             if (exited == 0) continue;
             long since = System.nanoTime() - exited;
-            if (since >= EXIT_GRACE.plus(LEAK_TIMEOUT).toNanos()) {
+            if (since >= exitGrace.plus(leakTimeout).toNanos()) {
                 finish(loader, live);
                 return;
             }
-            if (since >= EXIT_GRACE.toNanos()) {
+            if (since >= exitGrace.toNanos()) {
                 if (!reported) {
                     log.info("Stopping {} remaining thread(s) of instance {}: {}", live.size(), name, names(live));
                     reported = true;

@@ -36,8 +36,24 @@ see [paperhive.yml (plugin)](plugin-descriptor.md).
 | `MaxCrashes` | 1-1000 | `3` | No more restarts after this many crashes... |
 | `CrashWindow` | seconds, 1-604800 | `600` | ...within this many seconds. |
 | `VelocitySecret` | path | not set | Velocity's `forwarding.secret`. When set, every server is set up for [modern forwarding](../guide/velocity.md#forwarding-player-info) before each start. |
+| `Logs` | path | `logs` | Paperhive's own log and heap dumps. |
+| `Instances` | path | `instances` | The parent folder of servers without `Root`. |
+| `Console.Prompt` | text | `hive` | The name in the console prompt. |
+| `Console.Banner` | `true`/`false` | `true` | Show the logo at start. |
+| `Console.Colors` | `true`/`false` | `true` | Colour in the console. |
+| `Console.History` | path | `.paperhive-history` | The command history file. |
+| `Unsafe.UseMachineRam` | `true`/`false` | `false` | Count servers' `Ram` against the machine's memory instead of the heap. |
+| `Unsafe.HookTimeout` | seconds, 1-3600 | `30` | How long a stopping server's shutdown hooks get. |
+| `Unsafe.ExitGrace` | seconds, 0-3600 | `5` | How long a stopped server's leftover threads get before they're interrupted. |
+| `Unsafe.LeakTimeout` | seconds, 0-3600 | `10` | ...and then before they're reported as leaked. |
 
-`Host` changes apply when Paperhive starts.
+Any `Unsafe` setting that differs from its default is logged as a warning at start. `Host` changes apply when
+Paperhive starts.
+
+## Defaults
+
+Optional. Any of `IP`, `Args`, `Autostart`, `Restart`, `DisabledHivePlugins`, `SharedPlugins`, `EULA`, `Ram`: every
+server that doesn't set the key gets this value (Paper-only keys are skipped for Velocity servers).
 
 ## Servers
 
@@ -50,13 +66,14 @@ Each item:
 | `Software` | `papermc`/`velocitymc` | the top-level `Software` | What this server runs. |
 | `Version` | text | the top-level `Version` if the software matches, else that software's newest | The version it runs (`4.3.1-45` for Velocity). |
 | `IP` | text | all addresses | The address to listen on (Paper's `--host`). |
-| `Root` | path | `instances/<Name>` | The server's folder. Unique. |
+| `Root` | path | `<Host.Instances>/<Name>` | The server's folder. Unique. |
 | `Plugins` | path | `<Root>/plugins` | Its Paper plugins folder. |
 | `Args` | list of text | `[]` | Extra arguments for Paper. |
 | `Autostart` | `true`/`false` | `true` | Start it when Paperhive starts. |
 | `Restart` | `never`/`on-crash` | `never` | Start it again after a crash. |
 | `DisabledHivePlugins` | list of text | `[]` | Hive plugins not to load on this server. |
 | `SharedPlugins` | list of paths | `[]` | Extra folders of Paper plugin jars ([Shared plugins](../guide/shared-plugins.md)). |
+| `Ram` | `512M`, `2G`, or MB | none | Its share of the heap: it won't start unless that much is free next to the running servers' `Ram`. |
 
 A `velocitymc` server can't set `IP`, `Plugins`, `SharedPlugins` or `DisabledHivePlugins` (they're Paper's); that's a
 validation error. Velocity 4.3 needs Java 25 on the host.

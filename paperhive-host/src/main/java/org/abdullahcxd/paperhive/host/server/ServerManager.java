@@ -32,6 +32,7 @@ public final class ServerManager {
     private final Duration stopTimeout;
     private final @Nullable Path velocitySecret;
     private final HiveConfig.@NotNull EulaMode eula;
+    private final boolean useMachineRam;
 
     @Getter
     private final Path configFile;
@@ -64,6 +65,7 @@ public final class ServerManager {
         this.stopTimeout = config.host().stopTimeout();
         this.velocitySecret = config.host().velocitySecret();
         this.eula = config.host().eula();
+        this.useMachineRam = config.host().unsafe().useMachineRam();
         for (HiveConfig.Server server : config.servers()) add(server);
     }
 
@@ -126,6 +128,22 @@ public final class ServerManager {
     public synchronized boolean start(@NotNull String name) {
         ServerInstance instance = instances.get(name);
         if (instance == null) return false; // deleted meanwhile
+        Integer ram = servers.get(name).ram();
+        if (ram != null && !instance.isActive()) {
+            Map<String, Integer> reserved = new LinkedHashMap<>();
+            instances.forEach((n, i) -> {
+                Integer r = builtFrom.get(n).ram();
+                if (i.isActive() && r != null) reserved.put(n, r);
+            });
+            long budget = useMachineRam
+                    ? ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getTotalMemorySize() >> 20
+                    : Runtime.getRuntime().maxMemory() >> 20;
+            String shortfall = ramShortfall(name, ram, reserved, budget, useMachineRam ? "machine memory" : "heap");
+            if (shortfall != null) {
+                log.warn(shortfall);
+                return false;
+            }
+        }
         if (!startGuard.test(name)) {
             log.info("Not starting {}: a ServerStartEvent was cancelled", name);
             return false;
@@ -198,6 +216,14 @@ public final class ServerManager {
         // a server created while attached elsewhere stays quiet too
         if (attached != null) instance.getConsole().setEcho(attached == instance);
         return instance;
+    }
+
+    /** Why {@code name} can't reserve {@code ram} MB of {@code budget} MB next to what's {@code reserved}, or null if it can. */
+    static @Nullable String ramShortfall(@NotNull String name, int ram, @NotNull Map<String, Integer> reserved, long budget, @NotNull String of) {
+        long used = reserved.values().stream().mapToLong(Integer::longValue).sum();
+        if (used + ram <= budget) return null;
+        return "Not starting " + name + ": its Ram is " + ram + " MB but only " + Math.max(0, budget - used) + " MB of the " + budget
+                + " MB " + of + " is free" + (reserved.isEmpty() ? "" : " (reserved: " + reserved + ")");
     }
 
     // captured on the host's thread: calls also come from inside servers (Hive API), and these threads must be the host's

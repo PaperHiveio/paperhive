@@ -50,11 +50,10 @@ public final class PaperhiveMain {
             System.exit(1);
             return;
         }
-        // the version is in the jar's manifest; running from classes (an IDE, `run`) has none
-        String version = PaperhiveMain.class.getPackage().getImplementationVersion();
-        console.banner(version == null ? "dev" : version);
-        Logger log = Log.LOG;
         Path configFile = Path.of(HiveConfig.FILE_NAME);
+        // log4j2.xml reads it when logging starts, which reading the whole config already does
+        System.setProperty("paperhive.logs", HiveConfig.logsFolder(configFile).toString());
+        Logger log = Log.LOG;
         HiveConfig config;
         try {
             config = HiveConfig.load(configFile);
@@ -64,6 +63,13 @@ public final class PaperhiveMain {
             return;
         }
         HiveConfig.Host host = config.host();
+        console.configure(host.console());
+        // the version is in the jar's manifest; running from classes (an IDE, `run`) has none
+        String version = PaperhiveMain.class.getPackage().getImplementationVersion();
+        if (host.console().banner()) console.banner(version == null ? "dev" : version);
+        HiveConfig.Unsafe unsafe = host.unsafe();
+        if (!unsafe.equals(HiveConfig.Unsafe.DEFAULT)) log.warn("Unsafe settings in use: {}", unsafe);
+        ServerInstance.setTimeouts(unsafe.hookTimeout(), unsafe.exitGrace(), unsafe.leakTimeout());
         // each server's software and version, downloaded and prepared once per version
         SoftwareInstalls installs = new SoftwareInstalls(host.cache(), host.mirror());
 
@@ -120,7 +126,7 @@ public final class PaperhiveMain {
         }, "paperhive-shutdown"));
         // one heap for every server: warn before it runs out, and keep evidence if it does
         MemoryWatch.install(host.memoryWarning() / 100.0, () -> servers.instances().stream().filter(ServerInstance::isActive).map(ServerInstance::getName).toList(), log::warn);
-        MemoryWatch.dumpHeapOnOutOfMemory(Path.of("logs"));
+        MemoryWatch.dumpHeapOnOutOfMemory(host.logs());
         log.info("Heap limit {} MB, shared by every server", Runtime.getRuntime().maxMemory() >> 20);
         servers.startAutostart();
         if (servers.instances().stream().noneMatch(ServerInstance::isActive)) {

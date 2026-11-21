@@ -6,7 +6,8 @@
             <PatternLayout disableAnsi="false"
                 pattern="%style{%d{HH:mm:ss}}{bright black} %highlight{%-5level}{FATAL=bold red, ERROR=bold red, WARN=yellow, INFO=bright black, DEBUG=cyan, TRACE=black} %msg%n%xEx" />
         </Console>
-        <RollingRandomAccessFile name="File" fileName="logs/latest.log" filePattern="logs/%d{yyyy-MM-dd}-%i.log.gz">
+        <!-- paperhive.logs: Host.Logs, set by PaperhiveMain before logging starts -->
+        <RollingRandomAccessFile name="File" fileName="${sys:paperhive.logs:-logs}/latest.log" filePattern="${sys:paperhive.logs:-logs}/%d{yyyy-MM-dd}-%i.log.gz">
             <!-- the console's colours (ConsoleText) are left out of the file -->
             <PatternLayout pattern="[%d{HH:mm:ss}] [%t/%level]: %replace{%msg}{\x1B\[[0-9;]*m}{}%n%xEx" />
             <Policies>

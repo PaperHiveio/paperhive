@@ -7,7 +7,8 @@ description: "The hive> prompt, Hive commands, server commands, and controlling 
 
 Paperhive has one console for the whole hive: the `hive>` prompt. It has line editing, history (kept in
 `.paperhive-history`) and tab completion. Output from every server is printed above it, prefixed with the server's
-name.
+name. The prompt's name, colours, banner and history file can be changed under
+[`Host.Console`](configuration.md#console).
 
 ## Two kinds of commands
 
