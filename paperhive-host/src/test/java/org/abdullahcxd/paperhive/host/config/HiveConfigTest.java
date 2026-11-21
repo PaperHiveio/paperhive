@@ -9,6 +9,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,7 +28,7 @@ class HiveConfigTest {
         assertEquals(MCVersion.MC1_21_11, config.version());
         HiveConfig.Server main = config.servers().getFirst();
         assertEquals(new HiveConfig.Server("main", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25565, null, Path.of("instances", "main"), null, List.of(), true,
-                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null), main);
+                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null, null), main);
     }
 
     @Test
@@ -50,11 +51,12 @@ class HiveConfigTest {
                     DisabledHivePlugins: [Chat]
                     SharedPlugins: [shared/all, shared/survival]
                     EULA: false
+                    Ram: 2G
                 """);
         HiveConfig.Server survival = HiveConfig.load(file).servers().get(1);
         assertEquals(new HiveConfig.Server("survival", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, "127.0.0.1", Path.of("servers", "survival"), Path.of("shared", "plugins"),
                 List.of("--nojline", "-Dfoo"), false, ServerInstance.RestartPolicy.ON_CRASH, List.of("Chat"),
-                List.of(Path.of("shared", "all"), Path.of("shared", "survival")), false), survival);
+                List.of(Path.of("shared", "all"), Path.of("shared", "survival")), false, 2048), survival);
         ServerInstance.Options options = survival.options();
         assertEquals(25566, options.port());
         assertEquals(List.of("--host", "127.0.0.1", "--add-plugin-dir", Path.of("shared", "all").toAbsolutePath().toString(),
@@ -77,6 +79,18 @@ class HiveConfigTest {
                   CrashWindow: 60
                   VelocitySecret: ../velocity/forwarding.secret
                   EULA: manual
+                  Logs: var/logs
+                  Instances: servers
+                  Console:
+                    Prompt: paper
+                    Banner: false
+                    Colors: false
+                    History: var/history
+                  Unsafe:
+                    UseMachineRam: true
+                    HookTimeout: 10
+                    ExitGrace: 0
+                    LeakTimeout: 60
                 Servers:
                   - Name: a
                     Port: 1
@@ -84,7 +98,12 @@ class HiveConfigTest {
                 """);
         HiveConfig config = HiveConfig.load(file);
         assertEquals(new HiveConfig.Host(Path.of("hive-plugins"), Path.of("/tmp/cache"), "https://mirror.example/versions/",
-                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60), Path.of("../velocity/forwarding.secret"), HiveConfig.EulaMode.MANUAL), config.host());
+                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60), Path.of("../velocity/forwarding.secret"), HiveConfig.EulaMode.MANUAL,
+                Path.of("var", "logs"), Path.of("servers"), new HiveConfig.Console("paper", false, false, Path.of("var", "history")),
+                new HiveConfig.Unsafe(true, Duration.ofSeconds(10), Duration.ZERO, Duration.ofSeconds(60))), config.host());
+        assertEquals(Path.of("servers", "a"), config.servers().getFirst().root(), "Host.Instances");
+        assertEquals(Path.of("var", "logs"), HiveConfig.logsFolder(file));
+        assertEquals(Path.of("logs"), HiveConfig.logsFolder(tmp.resolve("missing.yml")));
         ServerInstance.Options options = config.servers().getFirst().options(config.host());
         assertEquals(List.of(Duration.ZERO, 5, Duration.ofSeconds(60)), List.of(options.restartDelay(), options.maxCrashes(), options.crashWindow()));
 
@@ -193,7 +212,7 @@ class HiveConfigTest {
         HiveConfig.load(file); // the commented default
         HiveConfig config = HiveConfig.addServer(file, "lobby", 25566);
         assertEquals(new HiveConfig.Server("lobby", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, null, Path.of("instances", "lobby"), null, List.of(), true,
-                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null), config.servers().get(1));
+                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null, null), config.servers().get(1));
         String text = Files.readString(file);
         assertTrue(text.contains("# Restart: never") && text.endsWith("  - Name: lobby\n    Port: 25566\n"), text);
         assertEquals(config, HiveConfig.load(file));
@@ -312,6 +331,66 @@ class HiveConfigTest {
                 """);
         for (String expected : List.of("Host.EULA: expected Automatic or Manual", "(a).EULA: expected true or false", "(p).EULA: not for Velocity servers")) {
             assertTrue(message.contains(expected), message);
+        }
+    }
+
+    @Test
+    void ramIsReadInMegabytes() throws Exception {
+        HiveConfig config = HiveConfig.load(write("""
+                ConfigurationVersion: 1
+                Servers: [{Name: a, Port: 1, Ram: 512M}, {Name: b, Port: 2, Ram: 3g}, {Name: c, Port: 3, Ram: 1024}, {Name: d, Port: 4}]
+                """));
+        assertEquals(Arrays.asList(512, 3072, 1024, null), config.servers().stream().map(HiveConfig.Server::ram).toList());
+
+        String message = problems("""
+                ConfigurationVersion: 1
+                Host:
+                  Unsafe: {UseMachineRam: maybe, Turbo: true}
+                Servers: [{Name: a, Port: 1, Ram: lots}, {Name: b, Port: 2, Ram: 0}]
+                """);
+        for (String expected : List.of("(a).Ram: expected an amount like 512M", "(b).Ram: expected", "Host.Unsafe.UseMachineRam: expected true or false",
+                "Host.Unsafe.Turbo: unknown key")) {
+            assertTrue(message.contains(expected), expected + " missing from:\n" + message);
+        }
+    }
+
+    @Test
+    void defaultsFillWhatAServerDoesntSet() throws Exception {
+        HiveConfig config = HiveConfig.load(write("""
+                ConfigurationVersion: 1
+                Defaults:
+                  Restart: on-crash
+                  Ram: 1G
+                  SharedPlugins: [shared]
+                Servers:
+                  - Name: a
+                    Port: 1
+                  - Name: b
+                    Port: 2
+                    Ram: 2G
+                  - Name: proxy
+                    Port: 3
+                    Software: velocitymc
+                """));
+        HiveConfig.Server a = config.servers().get(0), b = config.servers().get(1), proxy = config.servers().get(2);
+        assertEquals(List.of(ServerInstance.RestartPolicy.ON_CRASH, 1024, List.of(Path.of("shared"))), List.of(a.restart(), a.ram(), a.sharedPlugins()));
+        assertEquals(2048, b.ram(), "the server's own value wins");
+        assertEquals(List.of(), proxy.sharedPlugins(), "Paper's keys aren't given to Velocity");
+        assertEquals(ServerInstance.RestartPolicy.ON_CRASH, proxy.restart());
+
+        String message = problems("""
+                ConfigurationVersion: 1
+                Defaults:
+                  Port: 5
+                  Restart: sometimes
+                Host:
+                  Console: {Colours: false}
+                  Unsafe: {HookTimeout: 0}
+                Servers: [{Name: a, Port: 1}]
+                """);
+        for (String expected : List.of("Defaults.Port: unknown key", "(a).Restart: expected never or on-crash",
+                "Host.Console.Colours: unknown key; known: [Banner, Colors", "Host.Unsafe.HookTimeout: expected a whole number 1-3600")) {
+            assertTrue(message.contains(expected), expected + " missing from:\n" + message);
         }
     }
 

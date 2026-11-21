@@ -16,6 +16,17 @@ All servers allocate from the same JVM heap. Java can't limit or measure memory 
 | 3-5 mixed                   | 20-50   | `-Xmx8G`                                                |
 | larger worlds, many plugins | 50+     | `-Xmx12G` and up; watch `status` and the memory warning |
 
+To keep smaller servers from crowding out the rest, give servers a `Ram` share
+([Configuration](configuration.md#memory-ram)). A server only starts if its share is still free in the heap:
+
+```text
+Not starting survival: its Ram is 4096 MB but only 3072 MB of the 8192 MB heap is free (reserved: {lobby=1024, minigames=4096})
+```
+
+It's a reservation, not a cap: a server can still use more than its `Ram` while it runs. With
+`Host.Unsafe.UseMachineRam` the shares are counted against the machine's memory instead, which lets them add up to
+more than the heap.
+
 Paperhive logs the heap limit when it starts. `status <name>` shows each server's TPS and tick time, the best signal
 that the machine (or the heap) is struggling.
 
@@ -31,7 +42,7 @@ An `OutOfMemoryError` usually hits the server that was allocating. That server *
 with it, and the others keep running. Paperhive deliberately doesn't exit the JVM, which would stop every server
 without saving.
 
-The first `OutOfMemoryError` also writes a **heap dump** into `logs/`, unless your launch flags already set
+The first `OutOfMemoryError` also writes a **heap dump** into `logs/` (`Host.Logs`), unless your launch flags already set
 `-XX:+HeapDumpOnOutOfMemoryError` or `-XX:-HeapDumpOnOutOfMemoryError`. Open it with a tool like Eclipse MAT to see
 which server held the memory.
 

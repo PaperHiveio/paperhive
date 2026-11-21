@@ -3,6 +3,7 @@ package org.abdullahcxd.paperhive.host.console;
 import org.abdullahcxd.paperhive.plugin.command.ConsoleText;
 import org.abdullahcxd.paperhive.host.server.ServerManager;
 import org.abdullahcxd.paperhive.host.command.CommandRegistry;
+import org.abdullahcxd.paperhive.host.config.HiveConfig;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.abdullahcxd.paperhive.plugin.command.HiveCommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -22,7 +23,6 @@ import java.io.IOError;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 
 /**
  * The host's {@code hive>} prompt: line editing, history ({@code .paperhive-history}) and tab completion of commands,
@@ -33,6 +33,8 @@ public final class HiveConsole {
 
     private final Terminal terminal;
     private final LineReader reader;
+    private final AboveOutput above;
+    private volatile HiveConfig.Console settings = HiveConfig.Console.DEFAULT;
     private volatile CommandRegistry registry;
     private volatile ServerManager servers;
     private final HiveCommandSender sender = new HiveCommandSender() {
@@ -50,6 +52,14 @@ public final class HiveConsole {
     private HiveConsole(Terminal terminal, LineReader reader) {
         this.terminal = terminal;
         this.reader = reader;
+        this.above = new AboveOutput(reader, System.out);
+    }
+
+    /** {@code Host.Console}; before {@link #start}, as the history file is read at the first prompt. */
+    public void configure(HiveConfig.@NotNull Console settings) {
+        this.settings = settings;
+        above.plain |= !settings.colors();
+        reader.setVariable(LineReader.HISTORY_FILE, settings.history().toAbsolutePath());
     }
 
     /** Opens the terminal and points {@code System.out}/{@code err} above the prompt; before anything logs. */
@@ -59,7 +69,6 @@ public final class HiveConsole {
         LineReader reader = LineReaderBuilder.builder()
                 .terminal(terminal)
                 .appName("paperhive")
-                .variable(LineReader.HISTORY_FILE, Path.of(".paperhive-history").toAbsolutePath())
                 .completer((r, line, candidates) -> {
                     HiveConsole console = self[0];
                     if (console.registry == null) return;
@@ -70,7 +79,7 @@ public final class HiveConsole {
                 })
                 .build();
         self[0] = new HiveConsole(terminal, reader);
-        PrintStream above = new PrintStream(new AboveOutput(reader, System.out), true, StandardCharsets.UTF_8);
+        PrintStream above = new PrintStream(self[0].above, true, StandardCharsets.UTF_8);
         System.setOut(above);
         System.setErr(above);
         return self[0];
@@ -117,7 +126,8 @@ public final class HiveConsole {
             ServerInstance attached = servers.attached();
             String line;
             try {
-                line = reader.readLine(dumb ? "" : prompt(attached));
+                String prompt = prompt(settings.prompt(), attached);
+                line = reader.readLine(dumb ? "" : above.plain ? ConsoleText.strip(prompt) : prompt);
             } catch (UserInterruptException e) { // Ctrl+C at the prompt
                 line = "shutdown";
             } catch (EndOfFileException e) {
@@ -130,9 +140,9 @@ public final class HiveConsole {
         }
     }
 
-    /** {@code hive > }, or the attached server's name (in honey) while attached. */
-    private static @NotNull String prompt(@Nullable ServerInstance attached) {
-        return attached == null ? ConsoleText.name("hive") + ConsoleText.muted(" > ")
+    /** {@code <name> > } ({@code Host.Console.Prompt}), or the attached server's name (in honey) while attached. */
+    private static @NotNull String prompt(@NotNull String name, @Nullable ServerInstance attached) {
+        return attached == null ? ConsoleText.name(name) + ConsoleText.muted(" > ")
                 : ConsoleText.name(attached.getName()) + ConsoleText.muted(" (attached) > ");
     }
 
@@ -153,7 +163,7 @@ public final class HiveConsole {
         private final PrintStream fallback;
         private final ByteArrayOutputStream line = new ByteArrayOutputStream();
 
-        private final boolean plain;
+        private volatile boolean plain;
         private boolean terminalGone;
 
         /** @param fallback the JVM's own standard output, for when the terminal is gone */

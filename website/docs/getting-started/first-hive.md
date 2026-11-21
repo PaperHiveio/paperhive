@@ -86,6 +86,9 @@ my-hive/
 └─ .paperhive-cache/      the downloaded and patched Paper jar
 ```
 
+These are the default places; `Host.Instances`, `Host.Plugins`, `Host.Logs` and `Host.Cache` move them (see
+[Configuration](../guide/configuration.md#the-host-section)).
+
 ## Control it from scripts
 
 While Paperhive runs, any command can be sent from another terminal in the same folder:

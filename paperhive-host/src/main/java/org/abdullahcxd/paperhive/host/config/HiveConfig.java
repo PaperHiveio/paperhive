@@ -49,15 +49,18 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
     /** {@code MIGRATIONS.get(n)} turns a version {@code n} file into version {@code n + 1}. */
     private static final List<UnaryOperator<ObjectNode>> MIGRATIONS = List.of(HiveConfig::migrate0To1);
 
-    private static final Set<String> TOP_KEYS = Set.of("ConfigurationVersion", "Software", "Version", "Host", "Servers");
+    private static final Set<String> TOP_KEYS = Set.of("ConfigurationVersion", "Software", "Version", "Host", "Defaults", "Servers");
     private static final Set<String> HOST_KEYS = Set.of("Plugins", "Cache", "Mirror", "StopTimeout", "MemoryWarning",
-            "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret", "EULA");
-    private static final Set<String> SERVER_KEYS = Set.of("Name", "Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins", "EULA");
+            "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret", "EULA", "Logs", "Instances", "Console", "Unsafe");
+    private static final Set<String> CONSOLE_KEYS = Set.of("Prompt", "Banner", "Colors", "History");
+    private static final Set<String> UNSAFE_KEYS = Set.of("UseMachineRam", "HookTimeout", "ExitGrace", "LeakTimeout");
+    private static final Set<String> SERVER_KEYS = Set.of("Name", "Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins", "EULA", "Ram");
+    // what `Defaults:` may hold: every server key but those that must differ per server, and the hive-wide Software/Version
+    private static final Set<String> DEFAULT_KEYS = Set.of("IP", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins", "EULA", "Ram");
     // also a folder name and the console prefix
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_-]{1,32}");
     private static final YAMLMapper YAML = YAMLMapper.builder()
             .disable(YAMLWriteFeature.WRITE_DOC_START_MARKER).enable(YAMLWriteFeature.MINIMIZE_QUOTES).build();
-    private static final Logger LOG = LoggerFactory.getLogger(HiveConfig.class);
 
     private static final String DEFAULT = """
             # Paperhive host configuration
@@ -79,6 +82,24 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             #                               set up Velocity modern forwarding on every server at each start
             #   EULA: Automatic             Automatic: agree to the Minecraft EULA (eula.txt) for every Paper server;
             #                               Manual: only for servers with EULA: true, the rest you agree to yourself
+            #   Logs: logs                  Paperhive's own log and heap dumps
+            #   Instances: instances        where servers without a Root get their folder (<Instances>/<Name>)
+            #   Console:
+            #     Prompt: hive              the console prompt's name
+            #     Banner: true              show the logo at start
+            #     Colors: true              colour in the console
+            #     History: .paperhive-history
+            #   Unsafe:                     at your own risk; logged as a warning at start when any is changed
+            #     UseMachineRam: false      count servers' Ram against the machine's memory instead of the heap
+            #                               (-Xmx), so they may start with more than the heap can hold
+            #     HookTimeout: 30           seconds a server's shutdown hooks get when it stops
+            #     ExitGrace: 5              seconds a stopped server's threads get before they're interrupted
+            #     LeakTimeout: 10           ...and then before they're reported as leaked
+            # Optional settings every server gets unless it sets them itself:
+            # Defaults:
+            #   Restart: on-crash
+            #   Ram: 1G
+            #   (also IP, Args, Autostart, DisabledHivePlugins, SharedPlugins, EULA)
             Servers:
               - Name: main
                 Port: 25565
@@ -86,7 +107,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
                 # Software: papermc           this server's software (velocitymc: a Velocity proxy in the hive)
                 # Version: 1.21.11            its version (default: the one above, or that software's newest)
                 # IP: 0.0.0.0                 the address to listen on (all of them)
-                # Root: instances/main        the server's folder
+                # Root: instances/main        the server's folder (default: under Host.Instances)
                 # Plugins: <Root>/plugins
                 # Args: []                    extra arguments for the server
                 # Autostart: true             start it with the host
@@ -95,6 +116,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
                 # SharedPlugins: []           more folders of plugin jars, e.g. [shared/plugins]; each plugin
                 #                             still keeps its data in this server's own plugins folder
                 # EULA: true                  agree to the Minecraft EULA for this server (default: from Host.EULA)
+                # Ram: 2G                     its share of the heap (M or G): it won't start unless that much is
+                #                             free. Unset: no share, only the whole heap limits it
             """;
 
     /**
@@ -102,11 +125,12 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
      * @param plugins       its plugins folder, or null for {@code <root>/plugins}
      * @param sharedPlugins more folders of plugin jars, which other servers may load too (Paper's
      *                      {@code --add-plugin-dir}: the jars are shared, each plugin's data stays in this server's folder)
+     * @param ram           MB of the heap reserved for it while it runs, or null for none
      */
     public record Server(@NotNull String name, @NotNull MCSoftware software, @NotNull MCVersion version, int port,
                          @Nullable String ip, @NotNull Path root, @Nullable Path plugins, @NotNull List<String> args,
                          boolean autostart, ServerInstance.@NotNull RestartPolicy restart, @NotNull List<String> disabledHivePlugins,
-                         @NotNull List<Path> sharedPlugins, @Nullable Boolean eula) {
+                         @NotNull List<Path> sharedPlugins, @Nullable Boolean eula, @Nullable Integer ram) {
 
         /** Whether Paperhive agrees to the Minecraft EULA for it: its own {@code EULA}, else what {@code mode} says. */
         public boolean agreesToEula(@NotNull EulaMode mode) {
@@ -139,11 +163,46 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
      * @param memoryWarning  warn when the shared heap is this percent full after a GC
      * @param velocitySecret Velocity's {@code forwarding.secret}: when set, every server is set up for modern forwarding
      * @param eula           for the servers without their own {@code EULA}: whether Paperhive agrees to the Minecraft EULA
+     * @param logs           Paperhive's own log folder, also for heap dumps
+     * @param instances      the parent folder of servers without their own {@code Root}
      */
     public record Host(Path plugins, Path cache, String mirror, Duration stopTimeout, int memoryWarning,
-                       Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret, @NotNull EulaMode eula) {
+                       Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret, @NotNull EulaMode eula,
+                       @NotNull Path logs, @NotNull Path instances, @NotNull Console console, @NotNull Unsafe unsafe) {
         public static final Host DEFAULT = new Host(Path.of("plugins"), DirectoryConstants.CACHE_DIRECTORY_PATH,
-                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null, EulaMode.AUTOMATIC);
+                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null, EulaMode.AUTOMATIC,
+                Path.of("logs"), Path.of("instances"), Console.DEFAULT, Unsafe.DEFAULT);
+    }
+
+    /** {@code Host.Console}: how the host console looks. */
+    public record Console(@NotNull String prompt, boolean banner, boolean colors, @NotNull Path history) {
+        public static final Console DEFAULT = new Console("hive", true, true, Path.of(".paperhive-history"));
+    }
+
+    /**
+     * {@code Host.Unsafe}: settings that can break things when changed.
+     *
+     * @param useMachineRam servers' {@code Ram} is counted against the machine's memory, not the heap
+     * @param hookTimeout   how long a stopping server's shutdown hooks get
+     * @param exitGrace     how long a stopped server's threads get before they're interrupted
+     * @param leakTimeout   ...and after that, before they're reported as leaked
+     */
+    public record Unsafe(boolean useMachineRam, @NotNull Duration hookTimeout, @NotNull Duration exitGrace, @NotNull Duration leakTimeout) {
+        public static final Unsafe DEFAULT = new Unsafe(false, Duration.ofSeconds(30), Duration.ofSeconds(5), Duration.ofSeconds(10));
+    }
+
+    /**
+     * Just {@code Host.Logs} ({@code logs} when unset or unreadable), read without anything that logs: the log folder
+     * must be known before logging starts, and the full {@link #load} reports any problem with it.
+     */
+    public static @NotNull Path logsFolder(@NotNull Path file) {
+        try {
+            JsonNode logs = YAML.readTree(Files.readString(file)).path("Host").path("Logs");
+            if (logs.isString() && !logs.stringValue().isBlank()) return Path.of(logs.stringValue());
+        } catch (IOException | RuntimeException e) {
+            // no file yet, or broken: load() says what's wrong
+        }
+        return Host.DEFAULT.logs();
     }
 
     /** {@code Host.EULA}: who agrees to the Minecraft EULA ({@code eula.txt}) of the servers that don't set {@code EULA}. */
@@ -274,6 +333,9 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         return null;
     }
 
+    private static final Pattern RAM = Pattern.compile("(\\d{1,9})\\s*(?:([MmGg])[Bb]?)?");
+    private static final long MAX_RAM_MB = 1L << 24; // 16 TB
+
     // the indentation of the first item under a top-level `Servers:`
     private static final Pattern SERVERS_ITEMS = Pattern.compile("(?m)^Servers:[ \t]*\r?\n(?:[ \t]*(?:#.*)?\r?\n)*([ \t]*)- ");
 
@@ -300,7 +362,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         Path backup = file.resolveSibling(file.getFileName() + ".v" + from + ".bak");
         Files.copy(file, backup, StandardCopyOption.REPLACE_EXISTING);
         Files.writeString(file, YAML.writeValueAsString(migrated));
-        LOG.info("Migrated {} from ConfigurationVersion {} to {}; the original is in {}", file, from, CONFIGURATION_VERSION, backup);
+        LoggerFactory.getLogger(HiveConfig.class).info("Migrated {} from ConfigurationVersion {} to {}; the original is in {}", file, from, CONFIGURATION_VERSION, backup);
         return migrated;
     }
 
@@ -345,13 +407,22 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
 
         Host host = host(node.get("Host"), problems);
 
+        ObjectNode defaults = null;
+        JsonNode defaultsNode = node.get("Defaults");
+        if (defaultsNode instanceof ObjectNode d) {
+            checkKeys(d, DEFAULT_KEYS, "Defaults.", problems);
+            defaults = d;
+        } else if (defaultsNode != null) {
+            problems.add("Defaults: expected keys like Restart: and Ram:");
+        }
+
         List<Server> servers = new ArrayList<>();
         JsonNode list = node.get("Servers");
         if (list == null || !list.isArray() || list.isEmpty()) {
             problems.add("Servers: expected a list with at least one server (- Name: ..., Port: ...)");
         } else {
             for (int i = 0; i < list.size(); i++) {
-                Server server = server(list.get(i), "Servers[" + i + "]", software, version, problems);
+                Server server = server(list.get(i), "Servers[" + i + "]", software, version, defaults, host.instances(), problems);
                 if (server != null) servers.add(server);
             }
             checkUnique(servers, problems);
@@ -375,11 +446,13 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         if (mirror != null && !mirror.regionMatches(true, 0, "https://", 0, 8)) {
             problems.add("Host.Mirror: expected an https:// URL, got '" + mirror + "'");
         }
-        int stop = number(h, "StopTimeout", 1, 86_400, (int) d.stopTimeout().toSeconds(), problems);
-        int memory = number(h, "MemoryWarning", 1, 100, d.memoryWarning(), problems);
-        int delay = number(h, "RestartDelay", 0, 86_400, (int) d.restartDelay().toSeconds(), problems);
-        int crashes = number(h, "MaxCrashes", 1, 1_000, d.maxCrashes(), problems);
-        int window = number(h, "CrashWindow", 1, 86_400 * 7, (int) d.crashWindow().toSeconds(), problems);
+        int stop = number(h, "StopTimeout", "Host.", 1, 86_400, (int) d.stopTimeout().toSeconds(), problems);
+        int memory = number(h, "MemoryWarning", "Host.", 1, 100, d.memoryWarning(), problems);
+        int delay = number(h, "RestartDelay", "Host.", 0, 86_400, (int) d.restartDelay().toSeconds(), problems);
+        int crashes = number(h, "MaxCrashes", "Host.", 1, 1_000, d.maxCrashes(), problems);
+        int window = number(h, "CrashWindow", "Host.", 1, 86_400 * 7, (int) d.crashWindow().toSeconds(), problems);
+        String logs = string(h, "Logs", "Host.", d.logs().toString(), problems);
+        String instances = string(h, "Instances", "Host.", d.instances().toString(), problems);
         String secret = string(h, "VelocitySecret", "Host.", null, problems);
         String eulaName = string(h, "EULA", "Host.", "Automatic", problems);
         EulaMode eula = d.eula();
@@ -390,16 +463,55 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
                 default -> problems.add("Host.EULA: expected Automatic or Manual, got '" + eulaName + "'");
             }
         }
-        if (plugins == null || cache == null || mirror == null) return d; // reported above
+        Console console = Console.DEFAULT;
+        ObjectNode c = section(h, "Console", CONSOLE_KEYS, problems);
+        if (c != null) {
+            String prompt = string(c, "Prompt", "Host.Console.", console.prompt(), problems);
+            String history = string(c, "History", "Host.Console.", console.history().toString(), problems);
+            console = new Console(prompt == null ? console.prompt() : prompt, bool(c, "Banner", "Host.Console.", console.banner(), problems),
+                    bool(c, "Colors", "Host.Console.", console.colors(), problems), Path.of(history == null ? console.history().toString() : history));
+        }
+
+        Unsafe unsafe = Unsafe.DEFAULT;
+        ObjectNode u = section(h, "Unsafe", UNSAFE_KEYS, problems);
+        if (u != null) {
+            String at = "Host.Unsafe.";
+            unsafe = new Unsafe(bool(u, "UseMachineRam", at, unsafe.useMachineRam(), problems),
+                    Duration.ofSeconds(number(u, "HookTimeout", at, 1, 3_600, (int) unsafe.hookTimeout().toSeconds(), problems)),
+                    Duration.ofSeconds(number(u, "ExitGrace", at, 0, 3_600, (int) unsafe.exitGrace().toSeconds(), problems)),
+                    Duration.ofSeconds(number(u, "LeakTimeout", at, 0, 3_600, (int) unsafe.leakTimeout().toSeconds(), problems)));
+        }
+
+        if (plugins == null || cache == null || mirror == null || logs == null || instances == null) return d; // reported above
         return new Host(Path.of(plugins), Path.of(cache), mirror.endsWith("/") ? mirror : mirror + "/", Duration.ofSeconds(stop),
-                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window), secret == null ? null : Path.of(secret), eula);
+                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window), secret == null ? null : Path.of(secret), eula,
+                Path.of(logs), Path.of(instances), console, unsafe);
     }
 
-    private static int number(ObjectNode node, String key, int min, int max, int fallback, List<String> problems) {
+    /** {@code Host.<key>} as a checked section, or null if it's missing (or not a section: reported). */
+    private static @Nullable ObjectNode section(ObjectNode host, String key, Set<String> keys, List<String> problems) {
+        JsonNode node = host.get(key);
+        if (node instanceof ObjectNode o) {
+            checkKeys(o, keys, "Host." + key + ".", problems);
+            return o;
+        }
+        if (node != null) problems.add("Host." + key + ": expected keys like " + keys.stream().sorted().findFirst().orElseThrow() + ":");
+        return null;
+    }
+
+    private static boolean bool(ObjectNode node, String key, String prefix, boolean fallback, List<String> problems) {
+        JsonNode value = node.get(key);
+        if (value == null) return fallback;
+        if (value.isBoolean()) return value.booleanValue();
+        problems.add(prefix + key + ": expected true or false, got " + value);
+        return fallback;
+    }
+
+    private static int number(ObjectNode node, String key, String prefix, int min, int max, int fallback, List<String> problems) {
         JsonNode value = node.get(key);
         if (value == null) return fallback;
         if (value.isInt() && value.intValue() >= min && value.intValue() <= max) return value.intValue();
-        problems.add("Host." + key + ": expected a whole number " + min + "-" + max + ", got " + value);
+        problems.add(prefix + key + ": expected a whole number " + min + "-" + max + ", got " + value);
         return fallback;
     }
 
@@ -430,11 +542,12 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
     }
 
     private static @Nullable Server server(@NotNull JsonNode node, @NotNull String at, @Nullable MCSoftware hiveSoftware, @Nullable MCVersion hiveVersion,
-                                           @NotNull List<String> problems) {
-        if (!(node instanceof ObjectNode s)) {
+                                           @Nullable ObjectNode defaults, @NotNull Path instances, @NotNull List<String> problems) {
+        if (!(node instanceof ObjectNode own)) {
             problems.add(at + ": expected keys like Name: and Port:");
             return null;
         }
+        ObjectNode s = own;
         int before = problems.size();
         String name = string(s, "Name", at + ".", null, problems);
         if (!s.has("Name")) problems.add(at + ".Name: missing");
@@ -452,6 +565,13 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             ServerSoftware runs = ServerSoftwares.of(software);
             for (String key : runs.unsupportedKeys()) {
                 if (s.has(key)) problems.add(label + "." + key + ": not for " + runs.displayName() + " servers");
+            }
+            if (defaults != null) {
+                // the server's own keys win; Defaults' keys its software doesn't take (Paper's, on a Velocity server) are skipped
+                s = s.deepCopy();
+                for (Map.Entry<String, JsonNode> e : defaults.properties()) {
+                    if (!s.has(e.getKey()) && !runs.unsupportedKeys().contains(e.getKey())) s.set(e.getKey(), e.getValue());
+                }
             }
         }
 
@@ -482,6 +602,15 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             else problems.add(label + ".EULA: expected true or false, got " + eulaNode);
         }
 
+        Integer ram = null;
+        JsonNode ramNode = s.get("Ram");
+        if (ramNode != null) {
+            Matcher m = RAM.matcher(ramNode.isValueNode() ? ramNode.asString().strip() : "");
+            long mb = !m.matches() ? 0 : Long.parseLong(m.group(1)) << (m.group(2) == null || m.group(2).equalsIgnoreCase("M") ? 0 : 10);
+            if (mb >= 1 && mb <= MAX_RAM_MB) ram = (int) mb;
+            else problems.add(label + ".Ram: expected an amount like 512M or 2G (a bare number is MB), got " + ramNode);
+        }
+
         ServerInstance.RestartPolicy restart = ServerInstance.RestartPolicy.NEVER;
         String restartName = string(s, "Restart", label + ".", "never", problems);
         if (restartName != null) {
@@ -493,8 +622,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         }
 
         if (problems.size() > before || name == null || software == null || version == null) return null;
-        return new Server(name, software, version, port, ip, root == null ? Path.of("instances", name) : Path.of(root),
-                plugins == null ? null : Path.of(plugins), args, autostart, restart, disabled, shared, eula);
+        return new Server(name, software, version, port, ip, root == null ? instances.resolve(name) : Path.of(root),
+                plugins == null ? null : Path.of(plugins), args, autostart, restart, disabled, shared, eula, ram);
     }
 
     private static void checkUnique(List<Server> servers, List<String> problems) {

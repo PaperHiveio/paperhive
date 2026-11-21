@@ -56,7 +56,10 @@ ones (no `HiveFile extends File` shims, which would change `getClass()`/`equals`
 take a `File`). Absolute paths skip the lookup; relative ones find the instance via `StackWalker` caller class ->
 its loader -> `InstanceClassLoader` (fallback: the thread's context loader).
 
-The host's own cwd is the Paperhive home: `.paperhive-cache/`, `instances/<name>/`, and the host's `logs/`.
+The host's own cwd is the Paperhive home: `.paperhive-cache/`, `instances/<name>/`, and the host's `logs/` (by
+default; `Host.Cache`, `Host.Instances` and `Host.Logs` move them). `Host.Logs` reaches `log4j2.xml` as the
+`paperhive.logs` system property, set by `PaperhiveMain` from `HiveConfig.logsFolder` before anything logs (loading the
+whole config already starts logging).
 
 ## Stopping an instance (M3)
 A JVM exit is emulated per instance:
@@ -265,13 +268,17 @@ with a `-` (`0.1.0-beta.1`) is marked a pre-release. Locally: `./gradlew publish
   heap limit at startup). Per-server *retained* memory would need a heap walk (seconds, stop-the-world), so Paperhive
   doesn't estimate it; a heap dump (`jcmd <pid> GC.heap_dump`) with a dominator view per `InstanceClassLoader` answers
   that when needed.
+- **Ram reservations instead.** A server's `Ram` is admission control, not a cap: `ServerManager.start` refuses it
+  unless its `Ram` fits next to the running servers' `Ram` in `maxMemory()` (or the machine's total memory with
+  `Host.Unsafe.UseMachineRam`). Servers without `Ram` reserve nothing. Crash restarts skip the check (the instance
+  restarts itself and was counted as active throughout).
 - **Early warning.** `MemoryWatch` sets each heap pool's collection-usage threshold to `Host.MemoryWarning` (90%): when the heap is still
   that full right after a GC, the host logs which servers are running, so one can be stopped or `-Xmx` raised
   before an `OutOfMemoryError`.
 - **OutOfMemoryError policy.** Decided: keep running, don't exit the JVM. An OOM usually hits the thread that
   allocates, most often a server's; that server then crashes (`CRASHED`, with `Restart: on-crash` it comes back) and
   its memory is freed with its loader, so the others can carry on. Exiting on OOM (`-XX:+ExitOnOutOfMemoryError`)
-  would stop every server without saving. The host turns on `HeapDumpOnOutOfMemoryError` (into `logs/`) unless the
+  would stop every server without saving. The host turns on `HeapDumpOnOutOfMemoryError` (into `Host.Logs`) unless the
   launch flags already decide it, so the first OOM leaves evidence.
 - **Watchdogs.** Paper's own watchdog (a server thread hung for 60 s) stays per server: its `System.exit`/`halt`
   are rewritten to stop only that server. There is no host-level watchdog; if the JVM itself dies (native crash,
