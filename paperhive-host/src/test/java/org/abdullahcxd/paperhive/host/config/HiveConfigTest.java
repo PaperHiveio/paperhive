@@ -27,7 +27,7 @@ class HiveConfigTest {
         assertEquals(MCVersion.MC1_21_11, config.version());
         HiveConfig.Server main = config.servers().getFirst();
         assertEquals(new HiveConfig.Server("main", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25565, null, Path.of("instances", "main"), null, List.of(), true,
-                ServerInstance.RestartPolicy.NEVER, List.of(), List.of()), main);
+                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null), main);
     }
 
     @Test
@@ -49,11 +49,12 @@ class HiveConfigTest {
                     Restart: on-crash
                     DisabledHivePlugins: [Chat]
                     SharedPlugins: [shared/all, shared/survival]
+                    EULA: false
                 """);
         HiveConfig.Server survival = HiveConfig.load(file).servers().get(1);
         assertEquals(new HiveConfig.Server("survival", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, "127.0.0.1", Path.of("servers", "survival"), Path.of("shared", "plugins"),
                 List.of("--nojline", "-Dfoo"), false, ServerInstance.RestartPolicy.ON_CRASH, List.of("Chat"),
-                List.of(Path.of("shared", "all"), Path.of("shared", "survival"))), survival);
+                List.of(Path.of("shared", "all"), Path.of("shared", "survival")), false), survival);
         ServerInstance.Options options = survival.options();
         assertEquals(25566, options.port());
         assertEquals(List.of("--host", "127.0.0.1", "--add-plugin-dir", Path.of("shared", "all").toAbsolutePath().toString(),
@@ -75,6 +76,7 @@ class HiveConfigTest {
                   MaxCrashes: 5
                   CrashWindow: 60
                   VelocitySecret: ../velocity/forwarding.secret
+                  EULA: manual
                 Servers:
                   - Name: a
                     Port: 1
@@ -82,7 +84,7 @@ class HiveConfigTest {
                 """);
         HiveConfig config = HiveConfig.load(file);
         assertEquals(new HiveConfig.Host(Path.of("hive-plugins"), Path.of("/tmp/cache"), "https://mirror.example/versions/",
-                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60), Path.of("../velocity/forwarding.secret")), config.host());
+                Duration.ofSeconds(30), 80, Duration.ZERO, 5, Duration.ofSeconds(60), Path.of("../velocity/forwarding.secret"), HiveConfig.EulaMode.MANUAL), config.host());
         ServerInstance.Options options = config.servers().getFirst().options(config.host());
         assertEquals(List.of(Duration.ZERO, 5, Duration.ofSeconds(60)), List.of(options.restartDelay(), options.maxCrashes(), options.crashWindow()));
 
@@ -191,7 +193,7 @@ class HiveConfigTest {
         HiveConfig.load(file); // the commented default
         HiveConfig config = HiveConfig.addServer(file, "lobby", 25566);
         assertEquals(new HiveConfig.Server("lobby", MCSoftware.PAPERMC, MCVersion.MC1_21_11, 25566, null, Path.of("instances", "lobby"), null, List.of(), true,
-                ServerInstance.RestartPolicy.NEVER, List.of(), List.of()), config.servers().get(1));
+                ServerInstance.RestartPolicy.NEVER, List.of(), List.of(), null), config.servers().get(1));
         String text = Files.readString(file);
         assertTrue(text.contains("# Restart: never") && text.endsWith("  - Name: lobby\n    Port: 25566\n"), text);
         assertEquals(config, HiveConfig.load(file));
@@ -283,6 +285,34 @@ class HiveConfigTest {
     private String problems(String yaml) throws Exception {
         Path file = write(yaml);
         return assertThrows(HiveConfig.HiveConfigException.class, () -> HiveConfig.load(file)).getMessage();
+    }
+
+    @Test
+    void eulaComesFromTheServerElseTheHost() throws Exception {
+        HiveConfig config = HiveConfig.load(write("""
+                ConfigurationVersion: 1
+                Host:
+                  EULA: Manual
+                Servers:
+                  - Name: a
+                    Port: 1
+                  - Name: b
+                    Port: 2
+                    EULA: true
+                """));
+        assertFalse(config.servers().get(0).agreesToEula(config.host().eula()));
+        assertTrue(config.servers().get(1).agreesToEula(config.host().eula()));
+        assertTrue(config.servers().get(0).agreesToEula(HiveConfig.EulaMode.AUTOMATIC));
+
+        String message = problems("""
+                ConfigurationVersion: 1
+                Host:
+                  EULA: Sometimes
+                Servers: [{Name: a, Port: 1, EULA: yes please}, {Name: p, Port: 2, Software: velocitymc, EULA: true}]
+                """);
+        for (String expected : List.of("Host.EULA: expected Automatic or Manual", "(a).EULA: expected true or false", "(p).EULA: not for Velocity servers")) {
+            assertTrue(message.contains(expected), message);
+        }
     }
 
     private Path write(String yaml) throws Exception {

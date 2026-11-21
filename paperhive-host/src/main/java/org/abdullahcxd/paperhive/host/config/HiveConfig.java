@@ -51,8 +51,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
 
     private static final Set<String> TOP_KEYS = Set.of("ConfigurationVersion", "Software", "Version", "Host", "Servers");
     private static final Set<String> HOST_KEYS = Set.of("Plugins", "Cache", "Mirror", "StopTimeout", "MemoryWarning",
-            "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret");
-    private static final Set<String> SERVER_KEYS = Set.of("Name", "Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins");
+            "RestartDelay", "MaxCrashes", "CrashWindow", "VelocitySecret", "EULA");
+    private static final Set<String> SERVER_KEYS = Set.of("Name", "Software", "Version", "Port", "IP", "Root", "Plugins", "Args", "Autostart", "Restart", "DisabledHivePlugins", "SharedPlugins", "EULA");
     // also a folder name and the console prefix
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_-]{1,32}");
     private static final YAMLMapper YAML = YAMLMapper.builder()
@@ -77,6 +77,8 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             #   CrashWindow: 600            ...within this many seconds
             #   VelocitySecret: ../velocity/forwarding.secret
             #                               set up Velocity modern forwarding on every server at each start
+            #   EULA: Automatic             Automatic: agree to the Minecraft EULA (eula.txt) for every Paper server;
+            #                               Manual: only for servers with EULA: true, the rest you agree to yourself
             Servers:
               - Name: main
                 Port: 25565
@@ -92,6 +94,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
                 # DisabledHivePlugins: []     Paperhive plugins not to load on this server
                 # SharedPlugins: []           more folders of plugin jars, e.g. [shared/plugins]; each plugin
                 #                             still keeps its data in this server's own plugins folder
+                # EULA: true                  agree to the Minecraft EULA for this server (default: from Host.EULA)
             """;
 
     /**
@@ -103,7 +106,12 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
     public record Server(@NotNull String name, @NotNull MCSoftware software, @NotNull MCVersion version, int port,
                          @Nullable String ip, @NotNull Path root, @Nullable Path plugins, @NotNull List<String> args,
                          boolean autostart, ServerInstance.@NotNull RestartPolicy restart, @NotNull List<String> disabledHivePlugins,
-                         @NotNull List<Path> sharedPlugins) {
+                         @NotNull List<Path> sharedPlugins, @Nullable Boolean eula) {
+
+        /** Whether Paperhive agrees to the Minecraft EULA for it: its own {@code EULA}, else what {@code mode} says. */
+        public boolean agreesToEula(@NotNull EulaMode mode) {
+            return eula != null ? eula : mode == EulaMode.AUTOMATIC;
+        }
 
         /** What runs it. */
         public @NotNull ServerSoftware serverSoftware() {
@@ -130,11 +138,20 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
      * @param mirror        the Paperhive mirror's base URL (https, ends in {@code /})
      * @param memoryWarning  warn when the shared heap is this percent full after a GC
      * @param velocitySecret Velocity's {@code forwarding.secret}: when set, every server is set up for modern forwarding
+     * @param eula           for the servers without their own {@code EULA}: whether Paperhive agrees to the Minecraft EULA
      */
     public record Host(Path plugins, Path cache, String mirror, Duration stopTimeout, int memoryWarning,
-                       Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret) {
+                       Duration restartDelay, int maxCrashes, Duration crashWindow, @Nullable Path velocitySecret, @NotNull EulaMode eula) {
         public static final Host DEFAULT = new Host(Path.of("plugins"), DirectoryConstants.CACHE_DIRECTORY_PATH,
-                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null);
+                DownloaderConstants.CDN_URI, Duration.ofSeconds(60), 90, Duration.ofSeconds(3), 3, Duration.ofMinutes(10), null, EulaMode.AUTOMATIC);
+    }
+
+    /** {@code Host.EULA}: who agrees to the Minecraft EULA ({@code eula.txt}) of the servers that don't set {@code EULA}. */
+    public enum EulaMode {
+        /** Paperhive does, at each start. */
+        AUTOMATIC,
+        /** You do (or the server's {@code EULA: true}); Paperhive leaves {@code eula.txt} alone. */
+        MANUAL
     }
 
     public static @NotNull HiveConfig load(@NotNull Path file) {
@@ -364,9 +381,18 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
         int crashes = number(h, "MaxCrashes", 1, 1_000, d.maxCrashes(), problems);
         int window = number(h, "CrashWindow", 1, 86_400 * 7, (int) d.crashWindow().toSeconds(), problems);
         String secret = string(h, "VelocitySecret", "Host.", null, problems);
+        String eulaName = string(h, "EULA", "Host.", "Automatic", problems);
+        EulaMode eula = d.eula();
+        if (eulaName != null) {
+            switch (eulaName.toLowerCase(Locale.ROOT)) {
+                case "automatic" -> eula = EulaMode.AUTOMATIC;
+                case "manual" -> eula = EulaMode.MANUAL;
+                default -> problems.add("Host.EULA: expected Automatic or Manual, got '" + eulaName + "'");
+            }
+        }
         if (plugins == null || cache == null || mirror == null) return d; // reported above
         return new Host(Path.of(plugins), Path.of(cache), mirror.endsWith("/") ? mirror : mirror + "/", Duration.ofSeconds(stop),
-                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window), secret == null ? null : Path.of(secret));
+                memory, Duration.ofSeconds(delay), crashes, Duration.ofSeconds(window), secret == null ? null : Path.of(secret), eula);
     }
 
     private static int number(ObjectNode node, String key, int min, int max, int fallback, List<String> problems) {
@@ -449,6 +475,13 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
             else problems.add(label + ".Autostart: expected true or false, got " + autostartNode);
         }
 
+        Boolean eula = null;
+        JsonNode eulaNode = s.get("EULA");
+        if (eulaNode != null) {
+            if (eulaNode.isBoolean()) eula = eulaNode.booleanValue();
+            else problems.add(label + ".EULA: expected true or false, got " + eulaNode);
+        }
+
         ServerInstance.RestartPolicy restart = ServerInstance.RestartPolicy.NEVER;
         String restartName = string(s, "Restart", label + ".", "never", problems);
         if (restartName != null) {
@@ -461,7 +494,7 @@ public record HiveConfig(@NotNull MCSoftware software, @NotNull MCVersion versio
 
         if (problems.size() > before || name == null || software == null || version == null) return null;
         return new Server(name, software, version, port, ip, root == null ? Path.of("instances", name) : Path.of(root),
-                plugins == null ? null : Path.of(plugins), args, autostart, restart, disabled, shared);
+                plugins == null ? null : Path.of(plugins), args, autostart, restart, disabled, shared, eula);
     }
 
     private static void checkUnique(List<Server> servers, List<String> problems) {

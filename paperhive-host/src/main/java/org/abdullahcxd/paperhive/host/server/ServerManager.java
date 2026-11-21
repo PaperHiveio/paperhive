@@ -5,6 +5,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.abdullahcxd.paperhive.host.software.paper.PaperSoftware;
 import org.abdullahcxd.paperhive.host.config.HiveConfig;
+import org.abdullahcxd.paperhive.host.eula.EULA;
 import org.abdullahcxd.paperhive.host.instance.ServerInstance;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -30,6 +31,7 @@ public final class ServerManager {
     @Getter
     private final Duration stopTimeout;
     private final @Nullable Path velocitySecret;
+    private final HiveConfig.@NotNull EulaMode eula;
 
     @Getter
     private final Path configFile;
@@ -61,6 +63,7 @@ public final class ServerManager {
         this.extraArgs = extraArgs;
         this.stopTimeout = config.host().stopTimeout();
         this.velocitySecret = config.host().velocitySecret();
+        this.eula = config.host().eula();
         for (HiveConfig.Server server : config.servers()) add(server);
     }
 
@@ -138,6 +141,10 @@ public final class ServerManager {
             for (Path dir : server.sharedPlugins()) java.nio.file.Files.createDirectories(dir); // Paper skips a missing one
             // forwarding is set up on the servers behind a proxy, Paper ones
             if (velocitySecret != null && instance.getSoftware() instanceof PaperSoftware) VelocityForwarding.apply(instance.getRoot(), velocitySecret);
+            // Velocity has no EULA
+            if (instance.getSoftware() instanceof PaperSoftware && server.agreesToEula(eula) && EULA.agree(instance.getRoot())) {
+                log.info("Agreed to the Minecraft EULA for {}", name);
+            }
             List<String> args = new ArrayList<>(userArgs.isEmpty() ? instance.serverArgs() : userArgs);
             args.addAll(extraArgs.apply(server));
             instance.start(args);

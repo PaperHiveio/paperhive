@@ -61,7 +61,7 @@ public final class VelocitySoftware extends ServerSoftware {
 
     @Override
     public @NotNull @Unmodifiable Set<String> unsupportedKeys() {
-        return Set.of("IP", "Plugins", "SharedPlugins", "DisabledHivePlugins");
+        return Set.of("IP", "Plugins", "SharedPlugins", "DisabledHivePlugins", "EULA");
     }
 
     /**
