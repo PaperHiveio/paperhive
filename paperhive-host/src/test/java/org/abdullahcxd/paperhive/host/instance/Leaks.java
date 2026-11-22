@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +14,19 @@ import static org.junit.jupiter.api.Assertions.fail;
 public final class Leaks {
 
     private Leaks() {}
+
+    /**
+     * Interrupt a stopped server's leftover threads after 1s instead of 5s: Paper's (Craft Scheduler, Netty, ...)
+     * never exit on their own, so the default grace is ~4s of waiting per stop.
+     */
+    public static void quickStops() {
+        ServerInstance.setTimeouts(Duration.ofSeconds(30), Duration.ofSeconds(1), Duration.ofSeconds(10));
+    }
+
+    /** Back to the defaults (Host.Unsafe's), for the tests that run after in the same JVM. */
+    public static void defaultStops() {
+        ServerInstance.setTimeouts(Duration.ofSeconds(30), Duration.ofSeconds(5), Duration.ofSeconds(10));
+    }
 
     @SuppressWarnings("removal")
     public static void gc() throws InterruptedException {
