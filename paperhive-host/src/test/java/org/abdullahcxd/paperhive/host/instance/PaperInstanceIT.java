@@ -2,6 +2,8 @@ package org.abdullahcxd.paperhive.host.instance;
 
 import org.abdullahcxd.paperhive.host.software.paper.PaperclipCache;
 import org.abdullahcxd.paperhive.host.software.PreparedServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
@@ -39,6 +41,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class PaperInstanceIT {
 
     private static final int ROUNDS = Integer.getInteger("paperhive.it.rounds", 10);
+
+    @BeforeAll
+    static void quickStops() {
+        Leaks.quickStops();
+    }
+
+    @AfterAll
+    static void defaultStops() {
+        Leaks.defaultStops();
+    }
 
     @TempDir
     Path tmp;

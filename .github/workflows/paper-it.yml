@@ -1,5 +1,5 @@
 # The real-Paper tests (PaperInstanceIT, HivePluginLeakIT): boot, restart and stop real Paper servers in one JVM,
-# checking isolation and that nothing leaks across 10 restarts. Slow (~6 min), so not on every pull request.
+# checking isolation and that nothing leaks across 10 restarts. Slow (~6 min per test class, run in parallel), so not on every pull request.
 # Runs on Linux and Windows; the Linux "native" variant lets Paper use Netty's epoll transport instead of the NIO
 # Paperhive picks by default; it's informational (NIO is the default, see docs/tasks.md M6).
 # By running this, the EULA flag below accepts the Minecraft EULA for these throwaway test servers.
@@ -38,13 +38,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        target:
           - { os: ubuntu-latest, transport: nio }
           - { os: windows-latest, transport: nio }
           - { os: ubuntu-latest, transport: native }
-    name: paper (${{ matrix.os }}, ${{ matrix.transport }})
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.transport == 'native' }}
+        # one job per test class, in parallel: each is a few minutes of real-Paper restarts
+        test: [PaperInstanceIT, HivePluginLeakIT]
+    name: paper (${{ matrix.target.os }}, ${{ matrix.target.transport }}, ${{ matrix.test }})
+    runs-on: ${{ matrix.target.os }}
+    continue-on-error: ${{ matrix.target.transport == 'native' }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -74,8 +76,8 @@ jobs:
         run: |
           chmod +x gradlew
           native=()
-          [ "${{ matrix.transport }}" = native ] && native=(-Dio.netty.transport.noNative=false)
-          ./gradlew :paperhive-host:test --tests '*PaperInstanceIT' --tests '*HivePluginLeakIT' \
+          [ "${{ matrix.target.transport }}" = native ] && native=(-Dio.netty.transport.noNative=false)
+          ./gradlew :paperhive-host:test --tests '*${{ matrix.test }}' \
             -Dpaperhive.it.paperJar="$PAPER_JAR" -Dpaperhive.it.cache="$RUNNER_TEMP/paperclip" \
             -Dcom.mojang.eula.agree=true "${native[@]}"
 
@@ -83,7 +85,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: paper-it-reports-${{ matrix.os }}-${{ matrix.transport }}
+          name: paper-it-reports-${{ matrix.target.os }}-${{ matrix.target.transport }}-${{ matrix.test }}
           path: |
             paperhive-host/build/reports/tests/
             paperhive-host/build/test-work/**/*.hprof
