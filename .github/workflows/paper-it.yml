@@ -39,9 +39,9 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - { os: ubuntu-latest, transport: nio }
+          - { os: namespace-profile-paperhive, transport: nio }
           - { os: windows-latest, transport: nio }
-          - { os: ubuntu-latest, transport: native }
+          - { os: namespace-profile-paperhive, transport: native }
         # one job per test class, in parallel: each is a few minutes of real-Paper restarts
         test: [PaperInstanceIT, HivePluginLeakIT]
     name: paper (${{ matrix.target.os }}, ${{ matrix.target.transport }}, ${{ matrix.test }})

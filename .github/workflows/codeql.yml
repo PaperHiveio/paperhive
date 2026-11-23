@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-paperhive
     permissions:
       security-events: write
     steps:
