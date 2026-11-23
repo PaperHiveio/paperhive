@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-paperhive
     environment: release
     steps:
       - uses: actions/checkout@v7
